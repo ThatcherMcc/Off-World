@@ -8,7 +8,7 @@ public class Spawner : MonoBehaviour
 {
     public GameObject[] mobs; // list of mob prefabs it pulls from
     private GameObject mob; // current mob in spawner
-    private int numMobs; // number of mobs to spawn, usually 1
+    //private int numMobs; // number of mobs to spawn, usually 1
     private float count = 0; // counter used to wait a few seconds before spawning
 
     public GameObject player; // player character
@@ -48,13 +48,13 @@ public class Spawner : MonoBehaviour
         float y = transform.position.y;
         if (y < waterLevel + 11 && y > waterLevel + 1)
         {
-            numMobs = 1;
+            //numMobs = 1;
             mobType = MobType.Frog;
             return mobs.Length > 0 ? mobs[0] : null;
         }
         else if (y < waterLevel + 121 && y > waterLevel + 51)
         {
-            numMobs = 1;
+            //numMobs = 1;
             mobType = MobType.Wolf;
             return mobs.Length > 1 ? mobs[1] : null;
         }
@@ -79,7 +79,7 @@ public class Spawner : MonoBehaviour
     {
         if (mob != null)
         {
-            Destroy(mob);
+            DestroyImmediate(mob, true);
         }
         spawned = false;
     }

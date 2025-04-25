@@ -121,7 +121,6 @@ public class PlayerMovement : MonoBehaviour
             transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
             rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
             RideHeight = RideHeight / 2;
-
         }
 
         // stop crouching

@@ -11,7 +11,6 @@ public class FrogAI : MonoBehaviour, IEnemy
 {
     [Header("LOS")]
     [SerializeField] private float noticeRadius;
-    private bool running;
     private float runningTimer;
 
     public Transform player { get; set; }
@@ -63,11 +62,7 @@ public class FrogAI : MonoBehaviour, IEnemy
             {
                 RunFromPlayer();
                 // sets a timer to continue following for a second without LOS
-                if (runningTimer <= 0)
-                {
-                    running = false;
-                }
-                else
+                if (runningTimer > 0)
                 {
                     runningTimer -= Time.deltaTime;
                 }
@@ -94,7 +89,6 @@ public class FrogAI : MonoBehaviour, IEnemy
         {
             if (hit.transform.gameObject.CompareTag("Player"))
             {
-                running = true;
                 runningTimer = 2;
                 return true;
             }

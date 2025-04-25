@@ -176,7 +176,6 @@ MonoBehaviour:
   sensY: 600
   orientation: {fileID: 7024581412710844849}
   smoothRotationSpeed: 10
-  rotationThreshold: 1
 --- !u!114 &390483551835363253
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -447,21 +446,22 @@ MonoBehaviour:
   fpsCam: {fileID: 7024581412710844849}
   objectGrabPointTransform: {fileID: 1989178176049884666}
   objectGrabPointOffHandTransform: {fileID: 7203482831625821825}
-  pickUpLayerMask:
+  InteractLayerMask:
     serializedVersion: 2
     m_Bits: 256
-  enemyPickUpLayerMask:
+  enemyInteractLayerMask:
     serializedVersion: 2
     m_Bits: 512
-  pickUpRange: 4
-  pickUpRadius: 0.5
+  InteractRange: 3
+  InteractRadius: 0.5
   dropForwardForce: 6
   dropUpwardForce: 2
   isEquipped: 0
   isEquippedOffHand: 0
-  pick: 101
+  interact: 101
   drop: 113
   eat: 114
+  heldObject: {fileID: 0}
 --- !u!114 &8012219550528511155
 MonoBehaviour:
   m_ObjectHideFlags: 0

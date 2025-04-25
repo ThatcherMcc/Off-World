@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Rendering;
 using UnityEngine;
 
 public class PlayerHealth : MonoBehaviour
@@ -12,9 +13,11 @@ public class PlayerHealth : MonoBehaviour
     private void Start()
     {
         health = maxHealth;
+        GameObject temp = GameObject.FindGameObjectWithTag("Healthbar");
+        healthbar = temp.GetComponent<Healthbar>();
     }
 
-    private void Update()
+        private void Update()
     {
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {

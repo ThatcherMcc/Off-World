@@ -7,6 +7,9 @@ TagManager:
   - Manager
   - VirtualCamera
   - UserInterface
+  - Healthbar
+  - InteractText
+  - ChatBoxPanel
   layers:
   - Default
   - TransparentFX
@@ -16,7 +19,7 @@ TagManager:
   - UI
   - 
   - Player
-  - ObjectsGrabbable
+  - Interactable
   - EnemysGrabbable
   - whatIsGround
   - 

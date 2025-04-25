@@ -3,20 +3,20 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PickUpController : MonoBehaviour
+public class InteractController : MonoBehaviour
 {
     [Header("Camera")]
     [SerializeField] private Transform fpsCam;
-    [SerializeField] private Transform objectGrabPointTransform;
-    [SerializeField] private Transform objectGrabPointOffHandTransform;
+    public Transform objectGrabPointTransform;
+    public Transform objectGrabPointOffHandTransform;
 
     [Header("Type2Grab")]
-    [SerializeField] private LayerMask pickUpLayerMask;
-    [SerializeField] private LayerMask enemyPickUpLayerMask;
+    [SerializeField] private LayerMask InteractLayerMask;
+    [SerializeField] private LayerMask enemyInteractLayerMask;
 
     [Header("Properties")]
-    public float pickUpRange = 3f;
-    public float pickUpRadius = .5f;
+    public float InteractRange = 3f;
+    public float InteractRadius = .5f;
     public float dropForwardForce, dropUpwardForce;
 
     [Header("Equip Status")]
@@ -24,29 +24,41 @@ public class PickUpController : MonoBehaviour
     public bool isEquippedOffHand = false;
 
     [Header("KeyBinds")]
-    public KeyCode pick;
+    public KeyCode interact;
     public KeyCode drop;
     public KeyCode eat;
 
-    private GameObject heldObject;
+    public GameObject heldObject;
     private GameObject heldObjectOffHand;
 
-    private ObjectGrabbable objectGrabbable;
     private EnemyGrabbable enemyGrabbable;
 
+    private GameObject UIInteract;
+    private CanvasGroup cg;
+    public bool chatting;
+
+    private void Start()
+    {
+        UIInteract = GameObject.FindGameObjectWithTag("InteractText");
+        if (UIInteract != null)
+        {
+            UIInteract.SetActive(true);
+        }
+        cg = UIInteract.GetComponent<CanvasGroup>();
+    }
 
     void Update()
     {
-        // Pickup and Drop
-        if (Input.GetKeyDown(pick) && !isEquipped && objectGrabbable == null)
+        UICheck();
+        // Interact and Drop
+        if (Input.GetKeyDown(interact))
         {
-            PickUp();
+            Interact();
         }
-        if (Input.GetKeyDown(drop) && isEquipped && objectGrabbable != null)
+        if (Input.GetKeyDown(drop) && isEquipped)
         {
             Drop();
         }
-
         if (Input.GetKeyDown(eat) && isEquipped && heldObject != null)
         {
             Eat();
@@ -62,16 +74,38 @@ public class PickUpController : MonoBehaviour
 
     }
 
-    private void PickUp()
+    private void UICheck()
     {
-        if (Physics.SphereCast(fpsCam.position, pickUpRadius, fpsCam.forward, out RaycastHit raycastHit, pickUpRange, pickUpLayerMask))
+        if (Physics.SphereCast(fpsCam.position, InteractRadius, fpsCam.forward, out RaycastHit raycastHit, InteractRange, InteractLayerMask))
         {
-            if (raycastHit.transform.TryGetComponent(out ObjectGrabbable newObjectGrabbable))
+            if (raycastHit.transform.TryGetComponent(out InteractableI newInteractable))
             {
-                isEquipped = true;
-                objectGrabbable = newObjectGrabbable;
-                heldObject = objectGrabbable.gameObject;
-                objectGrabbable.Grab(objectGrabPointTransform);
+                if (!chatting)
+                {
+                    cg.alpha = 1;
+                } else
+                {
+                    cg.alpha = 0;  
+                }
+            }
+            else
+            {
+                cg.alpha = 0;
+            }
+        }
+        else
+        {
+            cg.alpha = 0;
+        }
+    }
+
+    private void Interact()
+    {
+        if (Physics.SphereCast(fpsCam.position, InteractRadius, fpsCam.forward, out RaycastHit raycastHit, InteractRange, InteractLayerMask))
+        {
+            if (raycastHit.transform.TryGetComponent(out InteractableI newInteractable))
+            {
+                newInteractable.Interact(this);
             }
         }
     }
@@ -80,14 +114,16 @@ public class PickUpController : MonoBehaviour
     {
         Rigidbody rb = heldObject.GetComponent<Rigidbody>();
 
-        isEquipped = false;
-        objectGrabbable.Drop();
+        if (heldObject.GetComponent<ObjectGrabbable>())
+        {
+            isEquipped = false;
+            heldObject.GetComponent<ObjectGrabbable>().Drop();
+        }
 
         rb.velocity = fpsCam.gameObject.GetComponentInParent<Rigidbody>().velocity;
         rb.AddForce(fpsCam.forward * dropForwardForce, ForceMode.Impulse);
         rb.AddForce(fpsCam.up * dropUpwardForce, ForceMode.Impulse);
 
-        objectGrabbable = null;
         heldObject = null;
     }
 
@@ -106,7 +142,7 @@ public class PickUpController : MonoBehaviour
     {
         if (isEquipped && heldObject.GetComponent<NetScript>())
         {
-            if (Physics.SphereCast(fpsCam.position, pickUpRadius, fpsCam.forward, out RaycastHit raycastHit, pickUpRange, enemyPickUpLayerMask))
+            if (Physics.SphereCast(fpsCam.position, InteractRadius, fpsCam.forward, out RaycastHit raycastHit, InteractRange, enemyInteractLayerMask))
             {
                 if (raycastHit.transform.TryGetComponent(out EnemyGrabbable newEnemyGrabbable))
                 {
@@ -128,5 +164,10 @@ public class PickUpController : MonoBehaviour
             enemyGrabbable = null;
             heldObjectOffHand = null;
         }
+    }
+
+    private void HandleDialogueStateChanged(bool isDialogueActive)
+    {
+        cg.alpha = isDialogueActive ? 0 : 1;
     }
 }

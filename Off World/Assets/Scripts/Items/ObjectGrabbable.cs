@@ -2,10 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ObjectGrabbable : MonoBehaviour
+public class ObjectGrabbable : MonoBehaviour, InteractableI
 {
     private Rigidbody rb;
-    private Transform objectGrabPointTransform;
+    public Transform objectGrabPointTransform;
     public bool equipped = false;
 
     private void Awake()
@@ -23,10 +23,23 @@ public class ObjectGrabbable : MonoBehaviour
         }
     }
 
-    public void Grab(Transform objectGrabPointTransform)
+    // Pickup
+    public void Interact(InteractController controller)
+    {
+        if (controller.isEquipped != true)
+        {
+            objectGrabPointTransform = controller.objectGrabPointTransform;
+            Grab();
+
+            controller.heldObject = this.gameObject;
+            controller.isEquipped = equipped;
+        }
+        
+    }
+
+    public void Grab()
     {
         equipped = true;
-        this.objectGrabPointTransform = objectGrabPointTransform;
         rb.useGravity = false;
         rb.drag = 5;
     }
@@ -35,7 +48,7 @@ public class ObjectGrabbable : MonoBehaviour
     {
         //Vector3 momentum = new Vector3()
         equipped = false;
-        this.objectGrabPointTransform = null;
+        objectGrabPointTransform = null;
         rb.useGravity = true;
         rb.drag = 0;
     }
