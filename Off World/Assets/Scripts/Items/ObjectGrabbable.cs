@@ -7,6 +7,7 @@ public class ObjectGrabbable : MonoBehaviour, InteractableI
     private Rigidbody rb;
     public Transform objectGrabPointTransform;
     public bool equipped = false;
+    public float lerpSpeed;
 
     private void Awake()
     {
@@ -17,7 +18,6 @@ public class ObjectGrabbable : MonoBehaviour, InteractableI
     {
         if (objectGrabPointTransform != null)
         {
-            float lerpSpeed = 13f;
             Vector3 newPosition = Vector3.Lerp(transform.position, objectGrabPointTransform.position, Time.deltaTime * lerpSpeed);
             rb.MovePosition(newPosition);
         }

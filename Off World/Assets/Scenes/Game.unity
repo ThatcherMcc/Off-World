@@ -2479,6 +2479,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: ScannableItem
       objectReference: {fileID: 0}
+    - target: {fileID: 8690305880220228983, guid: 2de6b2f9f8199494386ed6aead60a228, type: 3}
+      propertyPath: lerpSpeed
+      value: 100
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
