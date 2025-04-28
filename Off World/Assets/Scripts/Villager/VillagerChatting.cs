@@ -31,7 +31,12 @@ public class VillagerChatting : MonoBehaviour, InteractableI
     {
         if (!isPlayerInRange)
         {
-            HideDialogue(); //  Hide when out of range
+            HideDialogue();
+            if (controller != null) //  Hide when out of range
+            {
+                controller.chatting = false;
+            }
+
         }
     }
 

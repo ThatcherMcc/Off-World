@@ -94,13 +94,13 @@ public class ChunkGeneration : MonoBehaviour
                 );
                 current.transform.localScale = new Vector3(12.9f, 12.9f, 12.9f) * chunks.x;
                 // Build navigation mesh
-                foreach (NavMeshSurface navMesh in navMeshes)
-                {
-                    if (navMesh != null)
-                    {
-                        navMesh.BuildNavMesh();
-                    }
-                }
+                //foreach (NavMeshSurface navMesh in navMeshes)
+                //{
+                //    if (navMesh != null)
+                //    {
+                //       navMesh.BuildNavMesh();
+                //    }
+                //}
             }
         }
     }
