@@ -11,6 +11,8 @@ TagManager:
   - InteractText
   - ChatBoxPanel
   - DeathScreen
+  - Left
+  - Right
   layers:
   - Default
   - TransparentFX
