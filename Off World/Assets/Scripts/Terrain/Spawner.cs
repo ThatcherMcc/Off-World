@@ -8,6 +8,7 @@ public class Spawner : MonoBehaviour
 {
     public GameObject[] mobs; // list of mob prefabs it pulls from
     private GameObject mob; // current mob in spawner
+    private GameObject currentMobInstance; // To hold the spawned instance
     //private int numMobs; // number of mobs to spawn, usually 1
     private float count = 0; // counter used to wait a few seconds before spawning
 
@@ -68,8 +69,8 @@ public class Spawner : MonoBehaviour
     private void SpawnMob()
     { 
         spawned = true;
-        GameObject current = Instantiate(mob, transform.position, Quaternion.identity);
-        if (current.TryGetComponent<IEnemy>(out var currmob))
+        currentMobInstance = Instantiate(mob, transform.position, Quaternion.identity);
+        if (currentMobInstance.TryGetComponent<IEnemy>(out var currmob))
         {
             currmob.player = player.transform;
         }
@@ -77,9 +78,10 @@ public class Spawner : MonoBehaviour
 
     private void ClearMob()
     {
-        if (mob != null)
+        if (currentMobInstance != null)
         {
-            DestroyImmediate(mob, true);
+            Destroy(currentMobInstance);
+            currentMobInstance = null;
         }
         spawned = false;
     }

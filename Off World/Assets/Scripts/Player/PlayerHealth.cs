@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEditor.Rendering;
 using UnityEngine;
 
@@ -7,7 +8,11 @@ public class PlayerHealth : MonoBehaviour
 {
     public Healthbar healthbar;
     public int maxHealth = 100;
+    [SerializeField] private GameObject deathScreen;
+    private CanvasGroup cg;
     private int health;
+    private bool dead;
+    private Vector3 respawnPosition;
 
 
     private void Start()
@@ -15,9 +20,13 @@ public class PlayerHealth : MonoBehaviour
         health = maxHealth;
         GameObject temp = GameObject.FindGameObjectWithTag("Healthbar");
         healthbar = temp.GetComponent<Healthbar>();
+        GameObject temp2 = GameObject.FindGameObjectWithTag("DeathScreen");
+        cg = temp2.GetComponent<CanvasGroup>();
+        cg.alpha = 0;
+        respawnPosition = transform.position;
     }
 
-        private void Update()
+    private void Update()
     {
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
@@ -26,6 +35,10 @@ public class PlayerHealth : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space))
         {
             PlayerTakeDMG(20);
+        }
+        if (dead)
+        {
+            transform.position = respawnPosition;
         }
     }
 
@@ -54,6 +67,16 @@ public class PlayerHealth : MonoBehaviour
 
     private void Die()
     {
-        return;
+        cg.alpha = 1;
+        dead = true;
+        transform.position = respawnPosition;
+        Invoke("ResetDead", 3);
+    }
+
+    private void ResetDead()
+    {
+        dead = false;
+        cg.alpha = 0;
+        PlayerHeal(1000);
     }
 }

@@ -462,6 +462,7 @@ MonoBehaviour:
   drop: 113
   eat: 114
   heldObject: {fileID: 0}
+  chatting: 0
 --- !u!114 &8012219550528511155
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -536,7 +537,8 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 4593451751162633505, guid: 4059f392b68639a4fa606cba611a876a, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []

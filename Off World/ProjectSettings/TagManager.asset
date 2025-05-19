@@ -10,6 +10,7 @@ TagManager:
   - Healthbar
   - InteractText
   - ChatBoxPanel
+  - DeathScreen
   layers:
   - Default
   - TransparentFX

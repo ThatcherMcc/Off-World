@@ -7,7 +7,7 @@ public class ObjectGrabbable : MonoBehaviour, InteractableI
     private Rigidbody rb;
     public Transform objectGrabPointTransform;
     public bool equipped = false;
-    public float lerpSpeed;
+    public float lerpSpeed = 9f;
 
     private void Awake()
     {
@@ -20,17 +20,17 @@ public class ObjectGrabbable : MonoBehaviour, InteractableI
         {
             Vector3 newPosition = Vector3.Lerp(transform.position, objectGrabPointTransform.position, Time.deltaTime * lerpSpeed);
             rb.MovePosition(newPosition);
+            Debug.Log("Moving");
         }
     }
 
     // Pickup
     public void Interact(InteractController controller)
     {
-        if (controller.isEquipped != true)
+        if (!controller.isEquipped)
         {
             objectGrabPointTransform = controller.objectGrabPointTransform;
             Grab();
-
             controller.heldObject = this.gameObject;
             controller.isEquipped = equipped;
         }
