@@ -6,8 +6,8 @@ AvatarMask:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: NoHead
-  m_Mask: 01000000000000000000000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+  m_Name: Head
+  m_Mask: 00000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   m_Elements:
   - m_Path: 
     m_Weight: 1
@@ -66,7 +66,7 @@ AvatarMask:
   - m_Path: Armature/Hips/Lumbar/Lowerback/Upperback/Chest.R/Chest.R.001/Shoulder.R/Humerus.R/Forearm.R/Hand.R/Hand.R_end
     m_Weight: 1
   - m_Path: Armature/Hips/Lumbar/Lowerback/Upperback/Neck
-    m_Weight: 0
+    m_Weight: 1
   - m_Path: Armature/Hips/Lumbar/Lowerback/Upperback/Neck/Head
     m_Weight: 0
   - m_Path: Armature/Hips/Lumbar/Lowerback/Upperback/Neck/Head/Head_end

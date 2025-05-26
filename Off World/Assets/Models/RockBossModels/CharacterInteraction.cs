@@ -1,66 +1,189 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.NetworkInformation;
 using UnityEngine;
+using BossFight.BehaviorTrees;
+using BossFight.Strategies;
 
 public class CharacterInteraction : MonoBehaviour
 {
     private GameObject player;
     private Animator animator;
-    private RockBossController rockBossController;
+    private Rigidbody rb;
+    private RockBossHeadLook rockBossHeadLook;
+
+    [Header("BossTree")]
+    public float meleeRange;
+    public float rangedRange;
+    public float moveOffset;
+    public float runSpeed = 40;
+    BehaviorTree tree;
+
+
+
+
+
 
     public string playerNearParameter = "StartShake";
     public float proximityDistance = 10f;
-    public string animationStateName = "Shake"; // Name of the animation clip
+    public float noticeDistance = 20f;
     public int layerIndex = 0; // Assuming it's on base layer
-    private bool gotUp = false;
+
+    private bool gettingUp = false;
+    public bool gotUp = false;
 
     public bool isInteracting = false;
 
     void Start()
     {
         animator = GetComponent<Animator>();
-        rockBossController = GetComponent<RockBossController>();
+        rb = GetComponent<Rigidbody>();
+        rockBossHeadLook = GetComponent<RockBossHeadLook>();
         player = GameObject.FindGameObjectWithTag("Player");
+        rockBossHeadLook.enabled = false;
+
+        // start behavior tree
+        tree = new BehaviorTree("RockBoss");
+        //tree.AddChild(new Leaf("Chase", new ChasePlayerStrategy(rb, player.transform, runSpeed)));
+
+        // Attack
+        Sequence LeftPunch = new Sequence("LeftPunch");
+        LeftPunch.AddChild(new Leaf("CanMeleePlayer", new Condition(() => PlayerWithinRange(meleeRange))));
+        LeftPunch.AddChild(new Leaf("Punch", new AnimationWaitStrategy(animator, "PunchLeft", 1.667f)));
+
+        Sequence RightPunch = new Sequence("RightPunch");
+        RightPunch.AddChild(new Leaf("CanMeleePlayer", new Condition(() => PlayerWithinRange(meleeRange))));
+        RightPunch.AddChild(new Leaf("Punch", new AnimationWaitStrategy(animator, "PunchRight", 1.667f)));
+
+        Sequence Attacks = new Sequence("Attacks", 5);
+        Attacks.AddChild(LeftPunch);
+        Attacks.AddChild(RightPunch);
+
+
+        // Move
+        Sequence LeapMelee = new Sequence("LeapMelee");
+        LeapMelee.AddChild(new Leaf("inMeleeRange", new Condition(() => PlayerOutOfRange(meleeRange - 1f))));
+        //LeapMelee.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimBoolTrue("isWalking"))));
+        LeapMelee.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimTrigger("Walking"))));
+        LeapMelee.AddChild(new Leaf("MoveToMelee", new ChasePlayerStrategy(rb, player.transform, runSpeed * 1.5f, meleeRange - 1)));
+        //LeapMelee.AddChild(new Leaf("EndWalkingAnim", new ActionStrategy(() => SetAnimBoolFalse("isWalking"))));
+        LeapMelee.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimTrigger("NotWalking"))));
+
+        Sequence RunRanged = new Sequence("RunRanged");
+        RunRanged.AddChild(new Leaf("inRangedRange", new Condition(() => PlayerOutOfRange(rangedRange - 1f))));
+        //RunRanged.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimBoolTrue("isWalking"))));
+        RunRanged.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimTrigger("Walking"))));
+        RunRanged.AddChild(new Leaf("MoveToRanged", new ChasePlayerStrategy(rb, player.transform, runSpeed * 1.5f, rangedRange - 1)));
+        //RunRanged.AddChild(new Leaf("EndWalkingAnim", new ActionStrategy(() => SetAnimBoolFalse("isWalking"))));
+        RunRanged.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimTrigger("NotWalking"))));
+
+        RandomSelector Move = new RandomSelector("Move", 1);
+        Move.AddChild(LeapMelee);
+        Move.AddChild(RunRanged);
+
+
+        PrioritySelector MainNode = new PrioritySelector("MainNode", 100);
+
+        MainNode.AddChild(Attacks);
+        MainNode.AddChild(Move);
+
+        tree.AddChild(MainNode);
     }
 
     void Update()
     {
         if (player != null && !isInteracting)
         {
-            float distanceToPlayer = Vector3.Distance(transform.position, player.transform.position);
+            bool playerInRange = PlayerWithinRange(noticeDistance);
+            bool alertedBoss = PlayerWithinRange(proximityDistance);
 
-            if (!gotUp && distanceToPlayer <= proximityDistance) // boss getting up 
+            if (!gettingUp && alertedBoss) // boss getting up 
             {
                 StartCoroutine(GettingUpWait());
-                gotUp = true;
+                gettingUp = true;
+            }
+
+            if (gotUp && playerInRange) // if boss is activated do boss things
+            {
+                tree.Process();
             }
         }
     }
-
     IEnumerator HandleInteraction()
     {
         isInteracting = true;
-        rockBossController.enabled = false;
-        // animator.SetTrigger(playerNearParameter);
-
-        // Wait until the animation actually starts
-        yield return new WaitUntil(() => animator.GetCurrentAnimatorStateInfo(layerIndex).IsName(animationStateName));
-        // Wait until the animation finishes
-        yield return new WaitUntil(() =>
-            animator.GetCurrentAnimatorStateInfo(layerIndex).IsName(animationStateName) &&
-            animator.GetCurrentAnimatorStateInfo(layerIndex).normalizedTime >= 2f);
-
-        rockBossController.enabled = true;
+        rockBossHeadLook.enabled = false;
+        yield return new WaitForSeconds(1f);
+        rockBossHeadLook.enabled = true;
         isInteracting = false;
     }
-
     IEnumerator GettingUpWait()
     {
         isInteracting = true;
-        rockBossController.enabled = false;
+        TurnOffProcedural();
         animator.SetTrigger(playerNearParameter);
-        yield return new WaitForSeconds(4f);
-        rockBossController.enabled = true;
+        yield return new WaitForSeconds(5f);
+        TurnONProcedural();
+        yield return new WaitForSeconds(6f);
         isInteracting = false;
+        gotUp = true;
+    }
+
+    // turns on animation
+    private void Attack(string trigger = "PunchLeft")
+    {
+        animator.SetTrigger(trigger);
+    }
+
+    // check if player within a range
+    private bool PlayerWithinRange(float range)
+    {
+        float distanceToPlayer = Vector3.Distance(transform.position, player.transform.position);
+        if (distanceToPlayer <= range)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private bool PlayerOutOfRange(float range)
+    {
+        float distanceToPlayer = Vector3.Distance(transform.position, player.transform.position);
+        if (distanceToPlayer > range)
+        {
+            return true;
+        }
+        return false;
+    }
+
+
+    private void SetAnimTrigger(string trigger)
+    {
+        animator.SetTrigger(trigger);
+    }
+    private void SetAnimBoolTrue(string boolName)
+    {
+        animator.SetBool(boolName, true);
+    }
+    private void SetAnimBoolFalse(string boolName)
+    {
+        animator.SetBool(boolName, false);
+    }
+
+    private void TurnOffProcedural()
+    {
+        rockBossHeadLook.enabled = false;
+    }
+    private void TurnONProcedural()
+    {
+        rockBossHeadLook.enabled = true;
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, meleeRange);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, rangedRange);
     }
 }

@@ -1,6 +1,7 @@
+using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements.Experimental;
 
 public class LegMotion : MonoBehaviour
 {
@@ -16,10 +17,8 @@ public class LegMotion : MonoBehaviour
     // Is the leg moving?
     public bool Moving;
 
-
-    void Update()
+    public void TryMove()
     {
-        // If we are already moving, don't start another move
         if (Moving) return;
 
         float distFromHome = Vector3.Distance(transform.position, homeTransform.position);
@@ -27,7 +26,6 @@ public class LegMotion : MonoBehaviour
         // If we are too far off in position or rotation
         if (distFromHome > wantStepAtDistance)
         {
-            // Start the step coroutine
             StartCoroutine(Move());
         }
     }
@@ -64,6 +62,7 @@ public class LegMotion : MonoBehaviour
         {
             timeElapsed += Time.deltaTime;
             float normalizedTime = timeElapsed / moveDuration;
+            normalizedTime = EaseInCubic(normalizedTime);
 
             // Quadratic bezier curve
             transform.position =
@@ -78,7 +77,14 @@ public class LegMotion : MonoBehaviour
             yield return null;
         }
         while (timeElapsed < moveDuration);
-
         Moving = false;
+    }
+
+
+
+
+    private float EaseInCubic(float t)
+    {
+        return t * t * t;
     }
 }
