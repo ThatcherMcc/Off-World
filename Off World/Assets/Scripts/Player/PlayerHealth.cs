@@ -13,32 +13,29 @@ public class PlayerHealth : MonoBehaviour
     private int health;
     private bool dead;
     private Vector3 respawnPosition;
+    private bool immune;
+    private float immunityDuration = 1f;
 
 
     private void Start()
     {
         health = maxHealth;
-        GameObject temp = GameObject.FindGameObjectWithTag("Healthbar");
-        healthbar = temp.GetComponent<Healthbar>();
-        GameObject temp2 = GameObject.FindGameObjectWithTag("DeathScreen");
-        cg = temp2.GetComponent<CanvasGroup>();
+        healthbar = GameObject.FindGameObjectWithTag("Healthbar").GetComponent<Healthbar>();
+        cg = GameObject.FindGameObjectWithTag("DeathScreen").GetComponent<CanvasGroup>();
         cg.alpha = 0;
         respawnPosition = transform.position;
+        immune = false;
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.LeftShift))
-        {
-            PlayerHeal(20);
-        }
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            PlayerTakeDMG(20);
-        }
         if (dead)
         {
             transform.position = respawnPosition;
+        }
+        if (immune == true)
+        {
+
         }
     }
 
@@ -55,14 +52,25 @@ public class PlayerHealth : MonoBehaviour
 
     public void PlayerTakeDMG(int damage)
     {
-        health -= damage;
-        healthbar.SetHealth(health);
-
-        if (health <= 0)
+        if ( immune == false )
         {
-            health = 0;
-            Die();
+            immune = true; 
+            health -= damage;
+            healthbar.SetHealth(health);
+
+            Invoke("EndImmunity", immunityDuration);
+
+            if (health <= 0)
+            {
+                health = 0;
+                Die();
+            }
         }
+    }
+
+    private void EndImmunity()
+    {
+        immune = false;
     }
 
     private void Die()

@@ -13,6 +13,7 @@ TagManager:
   - DeathScreen
   - Left
   - Right
+  - Enemy
   layers:
   - Default
   - TransparentFX
