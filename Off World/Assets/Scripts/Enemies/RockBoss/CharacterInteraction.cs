@@ -64,7 +64,7 @@ public class CharacterInteraction : MonoBehaviour
 
         Selector Attacks = new Selector("Attacks", 5);
         Attacks.AddChild(PhysicalHits);
-        Attacks.AddChild(RangedAttack);
+        //Attacks.AddChild(RangedAttack);
 
         //
 
@@ -72,9 +72,11 @@ public class CharacterInteraction : MonoBehaviour
         // Melee Distance
         Sequence LeapMelee = new Sequence("LeapMelee");
         LeapMelee.AddChild(new Leaf("inMeleeRange", new Condition(() => PlayerOutOfRange(meleeRange - 1f))));
-        LeapMelee.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimTrigger("Walking"))));
-        LeapMelee.AddChild(new Leaf("MoveToMelee", new ChasePlayerStrategy(rb, player.transform, runSpeed * 2f, meleeRange - 1)));
-        LeapMelee.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimTrigger("NotWalking"))));
+        LeapMelee.AddChild(new Leaf("StartJumpingAnim", new AnimationWaitStrategy(animator, "JumpSlam", 0.74f)));
+        LeapMelee.AddChild(new Leaf("NoTurn", new ActionStrategy(() => TurnOffProcedural())));
+        LeapMelee.AddChild(new Leaf("MoveToMelee", new JumpOnPlayerStrategy(rb, player.transform, 2.91f)));
+        LeapMelee.AddChild(new Leaf("WaitForJump", new WaitStrategy(3.02f)));
+        LeapMelee.AddChild(new Leaf("Turn", new ActionStrategy(() => TurnONProcedural())));
         //
         // Ranged Distance
         Sequence RunRanged = new Sequence("RunRanged");
@@ -86,7 +88,7 @@ public class CharacterInteraction : MonoBehaviour
 
         RandomSelector Move = new RandomSelector("Move", 1);
         Move.AddChild(LeapMelee);
-        Move.AddChild(RunRanged);
+        //Move.AddChild(RunRanged);
         //
 
         // Main
@@ -134,9 +136,9 @@ public class CharacterInteraction : MonoBehaviour
         isInteracting = true;
         TurnOffProcedural();
         animator.SetTrigger(playerNearParameter);
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(4.3f);
         TurnONProcedural();
-        yield return new WaitForSeconds(6f);
+        yield return new WaitForSeconds(3.3f);
         isInteracting = false;
         gotUp = true;
     }
@@ -168,7 +170,6 @@ public class CharacterInteraction : MonoBehaviour
         return false;
     }
 
-
     private void SetAnimTrigger(string trigger)
     {
         animator.SetTrigger(trigger);
@@ -197,5 +198,7 @@ public class CharacterInteraction : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, meleeRange);
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, rangedRange);
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, noticeDistance);
     }
 }
