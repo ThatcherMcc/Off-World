@@ -1,8 +1,8 @@
 # Off-World
 
-[1 Min Demo Link on YouTube](https://www.youtube.com/watch?v=I9-k-yx-beE&ab_channel=YeetleBandeetle)
+[Short Demo Video on YouTube](https://www.youtube.com/watch?v=f-bmZSFRsHM&ab_channel=YeetleBandeetle)
 
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/I9-k-yx-beE/maxresdefault.jpg)](https://www.youtube.com/watch?v=I9-k-yx-beE)
+[![Off World Game Short Demo](https://img.youtube.com/vi/f-bmZSFRsHM/maxresdefault.jpg)](https://www.youtube.com/watch?v=f-bmZSFRsHM)
 ## Project Overview
 
 `Off-World` is a unique __Action RPG with Creature Evolution__ developed in Unity. It features procedural world generation, sophisticated AI systems for various creatures, and engaging core gameplay mechanics, aiming to deliver an immersive experience in a alien environment.
