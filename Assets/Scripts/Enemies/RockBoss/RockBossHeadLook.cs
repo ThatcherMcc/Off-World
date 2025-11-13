@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class RockBossHeadLook : MonoBehaviour
@@ -10,18 +11,55 @@ public class RockBossHeadLook : MonoBehaviour
     [SerializeField] float headTrackingSpeed;
 
     // How fast we can turn and move full throttle
-    [SerializeField] float turnSpeed;
+    [SerializeField] float startTurnSpeed;
+    private float turnSpeed;
     // How fast we will reach the above speeds
     [SerializeField] float turnAcceleration;
     // If we are above this angle from the target, start turning
     [SerializeField] float maxAngToTarget;
+    private float currentAngleToTarget;
+    [SerializeField] float speedIncreaseInterval = 1.0f;
+    private float nextSpeedIncreaseTime;
     // We are only doing a rotation around the up axis, so we only use a float here
-    float currentAngularVelocity;
+    private float currentAngularVelocity;
+    private bool canSee = false;
+
+    private void Start()
+    {
+        turnSpeed = startTurnSpeed;
+    }
 
     void LateUpdate()
     {
+        SpeedUpTurning();
         RootMotionUpdate();
         HeadTrackingUpdate();
+    }
+
+    public bool IsLookingAtPlayer()
+    {
+        return canSee;
+    }
+
+    void SpeedUpTurning()
+    {
+        // Check if we need to speed up and if enough time has passed since the last speed increase
+        if (Mathf.Abs(currentAngleToTarget) >= maxAngToTarget)
+        {
+            canSee = false;
+            if (Time.time >= nextSpeedIncreaseTime)
+            {
+                turnSpeed *= 1.05f;
+                nextSpeedIncreaseTime = Time.time + speedIncreaseInterval;
+            }
+        }
+        else
+        {
+            canSee = true;
+            turnSpeed = startTurnSpeed;
+            // Reset the timer when we are facing the target so it's ready for the next time
+            nextSpeedIncreaseTime = Time.time;
+        }
     }
 
     void HeadTrackingUpdate()
@@ -60,15 +98,15 @@ public class RockBossHeadLook : MonoBehaviour
         Vector3 towardTarget = target.position - transform.position;
         // Vector toward target on the local XZ plane
         Vector3 towardTargetProjected = Vector3.ProjectOnPlane(towardTarget, transform.up);
-        // Get the angle from the gecko's forward direction to the direction toward toward our target
+        // Get the angle from the bosses forward direction to the direction toward toward our target
         // Here we get the signed angle around the up vector so we know which direction to turn in
         float angToTarget = Vector3.SignedAngle(transform.forward, towardTargetProjected, transform.up);
-
+        currentAngleToTarget = angToTarget;
         float targetAngularVelocity = 0;
 
         // If we are within the max angle (i.e. approximately facing the target)
         // leave the target angular velocity at zero
-        if (Mathf.Abs(angToTarget) > maxAngToTarget)
+        if (Mathf.Abs(angToTarget) > maxAngToTarget - 0.5f)
         {
             // Angles in Unity are clockwise, so a positive angle here means to our right
             if (angToTarget > 0)

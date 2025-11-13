@@ -82,12 +82,12 @@ namespace BossFight.Strategies
 
     public class AnimationWaitStrategy : IStrategy
     {
-        readonly Animator animator;
-        readonly string animationTriggerName;
-        readonly float animDuration;
+        readonly Animator animator; // The animator to play the animation on
+        readonly string animationTriggerName; // The name of the trigger parameter to start the animation
+        readonly float animDuration; // Duration of the animation in seconds
 
-        private bool animTriggeredThisRun = false;
-        private float animTimeStarted = 0f;
+        private bool animTriggeredThisRun = false; // Keeps track if the animation has been triggered in the current run
+        private float animTimeStarted; // The time when the animation was started
 
         public AnimationWaitStrategy(Animator animator, string animationTriggerName, float animDuration)
         {
@@ -100,15 +100,15 @@ namespace BossFight.Strategies
         {
             if ( animator == null ) return Node.Status.Failure;
 
-            if ( !animTriggeredThisRun )
+            // if we haven't triggered the animation yet, trigger it
+            if ( !animTriggeredThisRun)
             {
-                animator.SetTrigger(animationTriggerName);
-                animTimeStarted = Time.time;
-                animTriggeredThisRun = true;
+                animator.SetTrigger(animationTriggerName); // trigger the animation
+                animTimeStarted = Time.time; // record the time the animation started
+                animTriggeredThisRun = true; // mark that we've triggered the animation this run
                 return Node.Status.Running;
             }
 
-      
             if (animTriggeredThisRun && Time.time - animTimeStarted <= animDuration)
             {
                 return Node.Status.Running;
@@ -133,16 +133,17 @@ namespace BossFight.Strategies
         readonly Rigidbody rb; // The boss's Transform
         readonly Transform playerTransform; // The player's Transform
 
-        // You might also want variables for movement speed and a stopping distance
         readonly float moveSpeed;
+        readonly float velocitySmoothingFactor;
         readonly float stopDistance;
 
 
-        public ChasePlayerStrategy(Rigidbody rb, Transform playerTransform, float moveSpeed = 10f, float stopDistance = 2f)
+        public ChasePlayerStrategy(Rigidbody rb, Transform playerTransform, float moveSpeed=10f, float velocitySmoothingFactor=10f, float stopDistance=2f)
         {
             this.rb = rb;
             this.playerTransform = playerTransform;
             this.moveSpeed = moveSpeed;
+            this.velocitySmoothingFactor = velocitySmoothingFactor;
             this.stopDistance = stopDistance;
     }
 
@@ -158,25 +159,32 @@ namespace BossFight.Strategies
 
             if (distance <= stopDistance)
             {
-                if (rb != null)
-                {
-                    rb.velocity = Vector3.zero;
-                    rb.angularVelocity = Vector3.zero;
-                }
+                rb.velocity = new Vector3(0, rb.velocity.y, 0);
+                rb.angularVelocity = Vector3.zero;
                 return Node.Status.Success;
             }
 
             Vector3 directionToPlayer = (playerTransform.position - rb.position).normalized;
-            directionToPlayer = new Vector3(directionToPlayer.x, 0, directionToPlayer.z);
-            rb.AddForce(directionToPlayer * moveSpeed, ForceMode.Force);
+            directionToPlayer.y = 0f;
+            directionToPlayer.Normalize();
 
-            Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+            Vector3 targetVelocity = directionToPlayer * moveSpeed;
+
+            Vector3 currentVelocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+            Vector3 newVelocity = Vector3.Lerp(
+                currentVelocity,
+                targetVelocity,
+                velocitySmoothingFactor * Time.fixedDeltaTime // Use Time.fixedDeltaTime in FixedUpdate/Process
+            );
+
+            rb.velocity = new Vector3(newVelocity.x, rb.velocity.y, newVelocity.z);
 
             // limit velocity to the max
-            if (flatVel.magnitude > moveSpeed)
+            if (directionToPlayer.sqrMagnitude > 0.01f)
             {
-                Vector3 limitedVel = flatVel.normalized * moveSpeed;
-                rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
+                Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
+                rb.rotation = Quaternion.Slerp(rb.rotation, targetRotation, 10f * Time.fixedDeltaTime);
             }
 
             return Node.Status.Running;
@@ -195,8 +203,7 @@ namespace BossFight.Strategies
     public class JumpOnPlayerStrategy : IStrategy {
         readonly Rigidbody rb;
         readonly Transform player;
-        private float t;
-        private bool hasJumped = false;
+        private readonly float t; // time from jump to landing
 
 
         // We can remove 'moveSpeed' and 'angle' from the constructor as they are calculated or not directly used
@@ -216,68 +223,46 @@ namespace BossFight.Strategies
                 return Node.Status.Failure;
             }
 
-            if (!hasJumped)
+            Vector3 start = rb.position;
+            Vector3 end = player.position;
+            Vector3 gravity = Physics.gravity;
+            float g = -gravity.y; // 9.81
+
+            // calc Range or dx
+            Vector3 startXZ = new Vector3(start.x, 0, start.z);
+            Vector3 endXZ = new Vector3(end.x, 0, end.z);
+            float R = Vector3.Distance(startXZ, endXZ);
+
+            // calc H or dy
+            float H = end.y - start.y;
+
+            // calc Vx
+            float Vx = (t > 0.001f) ? R / t : 0f;
+
+            //calc Vy
+            float Vy = (H / t) + (0.5f * g * t);
+
+            // horizontal direction
+            Vector3 horizontalDirection = (endXZ - startXZ).normalized;
+            if (R < 0.01f) // If horizontal distance is negligible, default to boss's forward direction
             {
-                if (!IsGrounded())
-                {
-                    Debug.Log("JumpOnPlayerStrategy: Not grounded, waiting to jump.");
-                    return Node.Status.Running;
-                }
-
-                Vector3 start = rb.position;
-                Vector3 end = player.position;
-                Vector3 gravity = Physics.gravity;
-                float g = -gravity.y; // Usually 9.81
-
-                // calc Range or dx
-                Vector3 startXZ = new Vector3(start.x, 0, start.z);
-                Vector3 endXZ = new Vector3(end.x, 0, end.z);
-                float R = Vector3.Distance(startXZ, endXZ);
-
-                // calc H or dy
-                float H = end.y - start.y;
-
-                // calc Vx
-                float Vx = (t > 0.001f) ? R / t : 0f;
-
-                //calc Vy
-                float Vy = (H / t) + (0.5f * g * t);
-
-                // horizontal direction
-                Vector3 horizontalDirection = (endXZ - startXZ).normalized;
-                if (R < 0.01f) // If horizontal distance is negligible, default to boss's forward direction
-                {
-                    horizontalDirection = rb.transform.forward;
-                }
-
-                // initial velocity
-                Vector3 initialVelocity = (horizontalDirection * Vx) + (Vector3.up * Vy);
-
-                // Apply it
-                rb.velocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-                rb.AddForce(initialVelocity, ForceMode.VelocityChange);
-
-                hasJumped = true;
-                Debug.Log($"Jump started: Hvel={Vx:F2}, Vvel={Vy:F2}, flightTime={t:F2}, TotalVelocity={initialVelocity}");
-                return Node.Status.Running;
+                horizontalDirection = rb.transform.forward;
             }
 
-            // Landing check
-            if (rb.velocity.y <= 0.1f && IsGrounded())
-            {
-                Debug.Log("Boss landed after jump.");
-                rb.velocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-                return Node.Status.Success;
-            }
+            // initial velocity
+            Vector3 initialVelocity = (horizontalDirection * Vx) + (Vector3.up * Vy);
 
-            return Node.Status.Running;
+            // Apply it
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.AddForce(initialVelocity, ForceMode.VelocityChange);
+
+            Debug.Log($"Jump started: Hvel={Vx:F2}, Vvel={Vy:F2}, flightTime={t:F2}, TotalVelocity={initialVelocity}");
+
+            return Node.Status.Success;
         }
-
         public void Reset()
         {
-            hasJumped = false;
             // Do NOT reset lastJumpTime here, as it's for cooldown
             if (rb != null)
             {
@@ -285,34 +270,6 @@ namespace BossFight.Strategies
                 rb.angularVelocity = Vector3.zero;
             }
             Debug.Log("JumpOnPlayerStrategy: Resetting.");
-        }
-
-        // You NEED to implement this IsGrounded() method somewhere reliable for your boss.
-        // For example, in your main BossAI script that manages the Rigidbody,
-        // using a SphereCast or Raycast downwards.
-        private bool IsGrounded()
-        {
-            float groundCheckDistance = 0.3f; // Adjust based on your character's size and collider
-            LayerMask groundLayer = LayerMask.GetMask("whatIsGround"); // Ensure your ground/terrain is on this layer
-
-            // SphereCast from slightly above the feet to detect ground
-            // Adjust 'rb.position.y - (collider.bounds.extents.y - 0.1f)' to be near the feet.
-            // A common way for CapsuleCollider is to cast from collider.bounds.center + Vector3.down * (collider.bounds.extents.y - 0.1f)
-            Collider mainCollider = rb.GetComponent<Collider>();
-            if (mainCollider == null) return false;
-
-            // Cast from slightly above the bottom of the main collider
-            Vector3 origin = mainCollider.bounds.center;
-            origin.y = mainCollider.bounds.min.y; // Just slightly above the bottom edge
-
-            // Use a small radius for the sphere cast
-            float sphereRadius = mainCollider.bounds.extents.x * 0.9f; // Or a fixed small value like 0.1f
-
-            // Perform the SphereCast
-            bool isGrounded = Physics.SphereCast(origin, sphereRadius, Vector3.down, out RaycastHit hitInfo, groundCheckDistance, groundLayer);
-            Color debugColor = isGrounded ? Color.green : Color.red;
-            Debug.DrawLine(origin, origin + Vector3.down * groundCheckDistance, debugColor, 0f, true);
-            return isGrounded;
         }
     } // jumps on player given a time its arc can take
 }

@@ -1,9 +1,8 @@
 using System.Collections;
-using System.Collections.Generic;
-using System.Net.NetworkInformation;
 using UnityEngine;
 using BossFight.BehaviorTrees;
 using BossFight.Strategies;
+using UnityEngine.Rendering.VirtualTexturing;
 
 public class CharacterInteraction : MonoBehaviour
 {
@@ -13,21 +12,18 @@ public class CharacterInteraction : MonoBehaviour
     private RockBossHeadLook rockBossHeadLook;
 
     [Header("BossTree")]
-    public float meleeRange;
-    public float rangedRange;
-    public float moveOffset;
-    public float runSpeed = 50;
-    BehaviorTree tree;
+    public float meleeRange; // the distance the player must be within for melee attacks
+    public float rangedRange; // the distance the player must be within for ranged attacks
+    public float runSpeed = 50; // speed at which the boss chases the player
+    BehaviorTree tree; // The behavior tree instance
 
-    public string playerNearParameter = "StartShake";
-    public float proximityDistance = 10f;
-    public float noticeDistance = 20f;
+    public string playerNearParameter = "StartShake"; // animator parameter to trigger when player is near
+    public float proximityDistance = 10f; // distance at which the boss becomes alive
+    public float noticeDistance = 20f; // distance at which the boss notices the player when up
     public int layerIndex = 0; // Assuming it's on base layer
 
-    private bool gettingUp = false;
-    public bool gotUp = false;
-
-    public bool isInteracting = false;
+    public bool gotUp = false; // whether the boss has fully gotten up
+    public bool isBusy = false; // is the boss busy performing an action
 
     void Start()
     {
@@ -38,84 +34,90 @@ public class CharacterInteraction : MonoBehaviour
         rockBossHeadLook.enabled = false;
 
         // start behavior tree
-        tree = new BehaviorTree("RockBoss");
-        //tree.AddChild(new Leaf("Chase", new ChasePlayerStrategy(rb, player.transform, runSpeed)));
+        tree = new BehaviorTree("RockBoss"); // create new behavior tree
+        PrioritySelector root = new PrioritySelector("RootPrioritySelector"); // create root node that everything branches from
+        tree.AddChild(root);
+        //
 
-        // Attack
-        // Phys
-
-        Sequence LeftPunch = new Sequence("LeftPunch");
+        ////// Attacks
+        RandomSelector Attacks = new RandomSelector("AttackSelector", 5);
+        //// Ranged Attacks
+        GuardedSequence RangedAttack = new GuardedSequence(
+            "RangedAttackSequence",
+            () => SetIsBusy(true),
+            () => SetIsBusy(false)
+        );
+        RangedAttack.AddChild(new Leaf("CanRangedAttackPlayer", new Condition(() => PlayerWithinRange(rangedRange) && !PlayerWithinRange(meleeRange))));
+        RangedAttack.AddChild(new Leaf("RangedAttackAnimation", new AnimationWaitStrategy(animator, "ThrowRock", 2.2f)));
+        ////
+        //// Physical Attacks
+        RandomSelector PhysicalAttacks = new RandomSelector("PhysicalAttackSelector");
+        // A single left punch attack sequence
+        GuardedSequence LeftPunch = new GuardedSequence("LeftPunchSequence",
+            () => SetIsBusy(true),
+            () => SetIsBusy(false)
+        );
         LeftPunch.AddChild(new Leaf("CanMeleePlayer", new Condition(() => PlayerWithinRange(meleeRange))));
-        LeftPunch.AddChild(new Leaf("Punch", new AnimationWaitStrategy(animator, "PunchLeft", 1.667f)));
-
-        Sequence RightPunch = new Sequence("RightPunch");
+        LeftPunch.AddChild(new Leaf("LeftPunchAttack", new AnimationWaitStrategy(animator, "PunchLeft", 1.7f)));
+        // a single right punch attack sequence
+        GuardedSequence RightPunch = new GuardedSequence("LeftPunchSequence",
+            () => SetIsBusy(true),
+            () => SetIsBusy(false)
+        );
         RightPunch.AddChild(new Leaf("CanMeleePlayer", new Condition(() => PlayerWithinRange(meleeRange))));
-        RightPunch.AddChild(new Leaf("Punch", new AnimationWaitStrategy(animator, "PunchRight", 1.667f)));
+        RightPunch.AddChild(new Leaf("RightPunchAttack", new AnimationWaitStrategy(animator, "PunchRight", 1.7f)));
 
-        RandomSelector PhysicalHits = new RandomSelector("PhysicalHits");
-        PhysicalHits.AddChild(LeftPunch);
-        PhysicalHits.AddChild(RightPunch);
-        //
-        // Ranged
-        Sequence RangedAttack = new Sequence("RangedAttack");
-        RangedAttack.AddChild(new Leaf("CanThrow", new Condition(() => PlayerWithinRange(rangedRange))));
-        RangedAttack.AddChild(new Leaf("ThrowRock", new AnimationWaitStrategy(animator, "ThrowRock", 2f)));
-        //
+        PhysicalAttacks.AddChild(LeftPunch);
+        PhysicalAttacks.AddChild(RightPunch);
+        ////
+        Attacks.AddChild(RangedAttack);
+        Attacks.AddChild(PhysicalAttacks);
+        //////
 
-        Selector Attacks = new Selector("Attacks", 5);
-        Attacks.AddChild(PhysicalHits);
-        //Attacks.AddChild(RangedAttack);
+        //// Movement
+        RandomSelector Movement = new RandomSelector("MovementSelector", 1);
+        // Jump slam attack sequence
+        GuardedSequence JumpSlam = new GuardedSequence(
+            "JumpSlam",
+            () => SetIsBusy(true),
+            () => SetIsBusy(false)
+        );
+        JumpSlam.AddChild(new Leaf("PlayerOutOfRange", new Condition(() => PlayerOutOfRange(meleeRange))));
+        JumpSlam.AddChild(new Leaf("StartJumpAnimation", new AnimationWaitStrategy(animator, "JumpSlam", 0.85f)));
+        JumpSlam.AddChild(new Leaf("JumpSlamAttack", new JumpOnPlayerStrategy(rb, player.transform, 2.3f)));
+        JumpSlam.AddChild(new Leaf("StartJumpAnimation", new WaitStrategy(6f)));
+        // Chase player sequence
+        GuardedSequence ChasePlayer = new GuardedSequence(
+            "ChasePlayer",
+            () => SetIsBusy(true),
+            () => SetIsBusy(false)
+        );
+        ChasePlayer.AddChild(new Leaf("PlayerOutOfRange", new Condition(() => PlayerOutOfRange(meleeRange))));
+        ChasePlayer.AddChild(new Leaf("StartRunningAnimation", new ActionStrategy(() => SetAnimTrigger("StartWalking"))));
+        ChasePlayer.AddChild(new Leaf("ChasePlayer", new ChasePlayerStrategy(rb, player.transform, runSpeed)));
+        ChasePlayer.AddChild(new Leaf("StopRunningAnimation", new ActionStrategy(() => SetAnimTrigger("StopWalking"))));
 
-        //
+        Movement.AddChild(JumpSlam);
+        Movement.AddChild(ChasePlayer);
+        ////
 
-        // Move
-        // Melee Distance
-        Sequence LeapMelee = new Sequence("LeapMelee");
-        LeapMelee.AddChild(new Leaf("inMeleeRange", new Condition(() => PlayerOutOfRange(meleeRange - 1f))));
-        LeapMelee.AddChild(new Leaf("StartJumpingAnim", new AnimationWaitStrategy(animator, "JumpSlam", 0.74f)));
-        LeapMelee.AddChild(new Leaf("NoTurn", new ActionStrategy(() => TurnOffProcedural())));
-        LeapMelee.AddChild(new Leaf("MoveToMelee", new JumpOnPlayerStrategy(rb, player.transform, 2.91f)));
-        LeapMelee.AddChild(new Leaf("WaitForJump", new WaitStrategy(3.02f)));
-        LeapMelee.AddChild(new Leaf("Turn", new ActionStrategy(() => TurnONProcedural())));
-        //
-        // Ranged Distance
-        Sequence RunRanged = new Sequence("RunRanged");
-        RunRanged.AddChild(new Leaf("inRangedRange", new Condition(() => PlayerOutOfRange(rangedRange - 1f))));
-        RunRanged.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimTrigger("Walking"))));
-        RunRanged.AddChild(new Leaf("MoveToRanged", new ChasePlayerStrategy(rb, player.transform, runSpeed, rangedRange - 1)));
-        RunRanged.AddChild(new Leaf("StartWalkingAnim", new ActionStrategy(() => SetAnimTrigger("NotWalking"))));
-        //
+        root.AddChild(Movement);
+        root.AddChild(Attacks);
 
-        RandomSelector Move = new RandomSelector("Move", 1);
-        Move.AddChild(LeapMelee);
-        //Move.AddChild(RunRanged);
-        //
-
-        // Main
-        PrioritySelector MainNode = new PrioritySelector("MainNode", 100);
-
-        MainNode.AddChild(Attacks);
-        MainNode.AddChild(Move);
-        //
-
-        tree.AddChild(MainNode);
-
-        // root - main - [Attacks, Move] - Attacks[PhysicalHits, RangedAttack] - PhysicalHits[LeftPunch, RightPunch]
-        // Move[LeapMelee, RunRanged] 
     }
 
     void Update()
     {
-        if (player != null && !isInteracting)
+        if (player != null)
         {
-            bool playerInRange = PlayerWithinRange(noticeDistance);
-            bool alertedBoss = PlayerWithinRange(proximityDistance);
+            bool alertedBoss = PlayerWithinRange(proximityDistance); // check if player within proximity distance
 
-            if (!gettingUp && alertedBoss) // boss getting up 
+            if (!gotUp && alertedBoss) // boss getting up 
             {
                 StartCoroutine(GettingUpWait());
-                gettingUp = true;
             }
+
+            bool playerInRange = PlayerWithinRange(noticeDistance); // check if player within notice distance
 
             if (gotUp && playerInRange) // if boss is activated do boss things
             {
@@ -123,33 +125,19 @@ public class CharacterInteraction : MonoBehaviour
             }
         }
     }
-    IEnumerator HandleInteraction()
+
+    // Begins the process of the boss getting up
+    IEnumerator GettingUpWait() 
     {
-        isInteracting = true;
-        rockBossHeadLook.enabled = false;
-        yield return new WaitForSeconds(1f);
-        rockBossHeadLook.enabled = true;
-        isInteracting = false;
-    }
-    IEnumerator GettingUpWait()
-    {
-        isInteracting = true;
-        TurnOffProcedural();
+        TurnOFFHeadLook();
         animator.SetTrigger(playerNearParameter);
         yield return new WaitForSeconds(4.3f);
-        TurnONProcedural();
+        TurnONHeadLook();
         yield return new WaitForSeconds(3.3f);
-        isInteracting = false;
         gotUp = true;
     }
 
-    // turns on animation
-    private void Attack(string trigger = "PunchLeft")
-    {
-        animator.SetTrigger(trigger);
-    }
-
-    // check if player within a range
+    // Checks if player within a range
     private bool PlayerWithinRange(float range)
     {
         float distanceToPlayer = Vector3.Distance(transform.position, player.transform.position);
@@ -160,6 +148,7 @@ public class CharacterInteraction : MonoBehaviour
         return false;
     }
 
+    // Checks if player out of a range
     private bool PlayerOutOfRange(float range)
     {
         float distanceToPlayer = Vector3.Distance(transform.position, player.transform.position);
@@ -170,24 +159,31 @@ public class CharacterInteraction : MonoBehaviour
         return false;
     }
 
+    // Debugging function to print comments to console
+    private void Debugging(string comment)
+    {
+               Debug.Log(comment);  
+    }
+
+    // Activates animation trigger to start an animation
     private void SetAnimTrigger(string trigger)
     {
         animator.SetTrigger(trigger);
     }
-    private void SetAnimBoolTrue(string boolName)
+
+    // Sets isBusy to true or false
+    private void SetIsBusy(bool state)
     {
-        animator.SetBool(boolName, true);
-    }
-    private void SetAnimBoolFalse(string boolName)
-    {
-        animator.SetBool(boolName, false);
+        isBusy = state;
     }
 
-    private void TurnOffProcedural()
+    // Turn off procedural head look script, so the bosses head doesn't rotate in awkward ways during certain animations
+    private void TurnOFFHeadLook()
     {
         rockBossHeadLook.enabled = false;
     }
-    private void TurnONProcedural()
+    // Turn on procedural head look script
+    private void TurnONHeadLook()
     {
         rockBossHeadLook.enabled = true;
     }
