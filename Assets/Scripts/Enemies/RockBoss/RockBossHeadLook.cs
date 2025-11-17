@@ -49,7 +49,7 @@ public class RockBossHeadLook : MonoBehaviour
             canSee = false;
             if (Time.time >= nextSpeedIncreaseTime)
             {
-                turnSpeed *= 1.05f;
+                turnSpeed *= 1.1f;
                 nextSpeedIncreaseTime = Time.time + speedIncreaseInterval;
             }
         }

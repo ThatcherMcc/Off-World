@@ -48,6 +48,7 @@ public class CharacterInteraction : MonoBehaviour
             () => SetIsBusy(false)
         );
         RangedAttack.AddChild(new Leaf("CanRangedAttackPlayer", new Condition(() => PlayerWithinRange(rangedRange) && !PlayerWithinRange(meleeRange))));
+        RangedAttack.AddChild(new Leaf("FacingPlayer", new Condition(() => rockBossHeadLook.IsLookingAtPlayer())));
         RangedAttack.AddChild(new Leaf("RangedAttackAnimation", new AnimationWaitStrategy(animator, "ThrowRock", 2.2f)));
         ////
         //// Physical Attacks
@@ -58,6 +59,7 @@ public class CharacterInteraction : MonoBehaviour
             () => SetIsBusy(false)
         );
         LeftPunch.AddChild(new Leaf("CanMeleePlayer", new Condition(() => PlayerWithinRange(meleeRange))));
+        LeftPunch.AddChild(new Leaf("FacingPlayer", new Condition(() => rockBossHeadLook.IsLookingAtPlayer())));
         LeftPunch.AddChild(new Leaf("LeftPunchAttack", new AnimationWaitStrategy(animator, "PunchLeft", 1.7f)));
         // a single right punch attack sequence
         GuardedSequence RightPunch = new GuardedSequence("LeftPunchSequence",
@@ -65,6 +67,7 @@ public class CharacterInteraction : MonoBehaviour
             () => SetIsBusy(false)
         );
         RightPunch.AddChild(new Leaf("CanMeleePlayer", new Condition(() => PlayerWithinRange(meleeRange))));
+        RightPunch.AddChild(new Leaf("FacingPlayer", new Condition(() => rockBossHeadLook.IsLookingAtPlayer())));
         RightPunch.AddChild(new Leaf("RightPunchAttack", new AnimationWaitStrategy(animator, "PunchRight", 1.7f)));
 
         PhysicalAttacks.AddChild(LeftPunch);
@@ -83,9 +86,12 @@ public class CharacterInteraction : MonoBehaviour
             () => SetIsBusy(false)
         );
         JumpSlam.AddChild(new Leaf("PlayerOutOfRange", new Condition(() => PlayerOutOfRange(meleeRange))));
+        JumpSlam.AddChild(new Leaf("FacingPlayer", new Condition(() => rockBossHeadLook.IsLookingAtPlayer())));
+        JumpSlam.AddChild(new Leaf("TurnOffHeadLook", new ActionStrategy(() => TurnOFFHeadLook())));
         JumpSlam.AddChild(new Leaf("StartJumpAnimation", new AnimationWaitStrategy(animator, "JumpSlam", 0.85f)));
         JumpSlam.AddChild(new Leaf("JumpSlamAttack", new JumpOnPlayerStrategy(rb, player.transform, 2.3f)));
-        JumpSlam.AddChild(new Leaf("StartJumpAnimation", new WaitStrategy(6f)));
+        JumpSlam.AddChild(new Leaf("WaitForJumpToFinish", new WaitStrategy(6f)));
+        JumpSlam.AddChild(new Leaf("TurnOffHeadLook", new ActionStrategy(() => TurnONHeadLook())));
         // Chase player sequence
         GuardedSequence ChasePlayer = new GuardedSequence(
             "ChasePlayer",
@@ -93,8 +99,9 @@ public class CharacterInteraction : MonoBehaviour
             () => SetIsBusy(false)
         );
         ChasePlayer.AddChild(new Leaf("PlayerOutOfRange", new Condition(() => PlayerOutOfRange(meleeRange))));
+        ChasePlayer.AddChild(new Leaf("FacingPlayer", new Condition(() => rockBossHeadLook.IsLookingAtPlayer())));
         ChasePlayer.AddChild(new Leaf("StartRunningAnimation", new ActionStrategy(() => SetAnimTrigger("StartWalking"))));
-        ChasePlayer.AddChild(new Leaf("ChasePlayer", new ChasePlayerStrategy(rb, player.transform, runSpeed)));
+        ChasePlayer.AddChild(new Leaf("ChasePlayer", new ChasePlayerStrategy(rb, player.transform, runSpeed, 2.5f)));
         ChasePlayer.AddChild(new Leaf("StopRunningAnimation", new ActionStrategy(() => SetAnimTrigger("StopWalking"))));
 
         Movement.AddChild(JumpSlam);

@@ -138,7 +138,7 @@ namespace BossFight.Strategies
         readonly float stopDistance;
 
 
-        public ChasePlayerStrategy(Rigidbody rb, Transform playerTransform, float moveSpeed=10f, float velocitySmoothingFactor=10f, float stopDistance=2f)
+        public ChasePlayerStrategy(Rigidbody rb, Transform playerTransform, float moveSpeed=10f, float stopDistance = 2f, float velocitySmoothingFactor=10f)
         {
             this.rb = rb;
             this.playerTransform = playerTransform;
