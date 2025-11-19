@@ -4,29 +4,53 @@ using UnityEngine;
 
 public class EnemyHealth : MonoBehaviour
 {
-    [SerializeField] private float health;
-    public float maxHealth = 100;
+    [SerializeField] private int health;
+    [SerializeField] private Healthbar healthbar;
+    [SerializeField] private CharacterInteraction bossController;
+    private bool activated = false;
+    [SerializeField] private int maxHealth = 100;
+
+    private void Awake()
+    {
+        if (healthbar == null)
+        {
+            healthbar = GameObject.FindGameObjectWithTag("BOSSHEALTHBAR").GetComponent<Healthbar>();
+        }
+        if (bossController == null)
+        {
+            bossController = GetComponent<CharacterInteraction>();
+        }
+    }
 
     private void Start()
     {
         health = maxHealth;
     }
-
-    private void Update()
+   
+    public void HurtEnemy(int dmg)
     {
-        if (health <= 0)
+        if (activated)
         {
-            Die();
-        }
-    }
+            health -= dmg;
+            healthbar.SetHealth(health);
 
-    public void HurtEnemy(float dmg)
-    {
-        health -= dmg;
+            if (health <= 0)
+            {
+                Die();
+            }
+        }
+
     }
 
     private void Die()
     {
+        bossController.DeactivateHealthbar();
         Destroy(gameObject);
+    }
+
+    public void SetActivated(bool state)
+    {
+
+        activated = state;
     }
 }

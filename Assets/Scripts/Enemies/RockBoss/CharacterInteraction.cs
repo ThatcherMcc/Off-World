@@ -3,13 +3,16 @@ using UnityEngine;
 using BossFight.BehaviorTrees;
 using BossFight.Strategies;
 using UnityEngine.Rendering.VirtualTexturing;
+using UnityEngine.WSA;
 
 public class CharacterInteraction : MonoBehaviour
 {
-    private GameObject player;
+    [SerializeField] private GameObject player;
     private Animator animator;
     private Rigidbody rb;
     private RockBossHeadLook rockBossHeadLook;
+    private EnemyHealth enemyHealth;
+    [SerializeField] private CanvasGroup bossHealthUI;
 
     [Header("BossTree")]
     public float meleeRange; // the distance the player must be within for melee attacks
@@ -30,8 +33,17 @@ public class CharacterInteraction : MonoBehaviour
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
         rockBossHeadLook = GetComponent<RockBossHeadLook>();
-        player = GameObject.FindGameObjectWithTag("Player");
+        enemyHealth = GetComponent<EnemyHealth>();
+        if (player == null) {
+            player = GameObject.FindGameObjectWithTag("Player");
+        }
+        if (bossHealthUI == null)
+        {
+            bossHealthUI = GameObject.Find("BossHealthbarUI").GetComponent<CanvasGroup>();
+        }
+
         rockBossHeadLook.enabled = false;
+        DeactivateHealthbar();
 
         // start behavior tree
         tree = new BehaviorTree("RockBoss"); // create new behavior tree
@@ -138,9 +150,10 @@ public class CharacterInteraction : MonoBehaviour
     {
         TurnOFFHeadLook();
         animator.SetTrigger(playerNearParameter);
-        yield return new WaitForSeconds(4.3f);
+        yield return new WaitForSeconds(4.6f);
         TurnONHeadLook();
-        yield return new WaitForSeconds(3.3f);
+        ActivateHealthBar();
+        yield return new WaitForSeconds(3f);
         gotUp = true;
     }
 
@@ -194,6 +207,18 @@ public class CharacterInteraction : MonoBehaviour
     {
         rockBossHeadLook.enabled = true;
     }
+
+    private void ActivateHealthBar()
+    {
+        enemyHealth.SetActivated(true);
+        bossHealthUI.alpha = 1f;
+    }
+    public void DeactivateHealthbar()
+    {
+        bossHealthUI.alpha = 0f;
+        enemyHealth.SetActivated(false);
+    }
+
 
     private void OnDrawGizmos()
     {

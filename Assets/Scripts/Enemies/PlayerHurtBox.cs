@@ -14,9 +14,14 @@ public class PlayerHitBox : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        if (other == null && other.gameObject.CompareTag("Enemy"))
+        {
+            return;
+        }
+
         EnemyHealth enemyHealth = other.gameObject.GetComponent<EnemyHealth>();
 
-        // If not found, try to get it from sthe parent
+        // If not found, try to get it from the parent
         if (enemyHealth == null)
         {
             enemyHealth = other.gameObject.GetComponentInParent<EnemyHealth>();

@@ -7,36 +7,28 @@ using UnityEngine;
 public class PlayerHealth : MonoBehaviour
 {
     public Healthbar healthbar;
+    [SerializeField] private CanvasGroup cg;
     public int maxHealth = 100;
-    [SerializeField] private GameObject deathScreen;
-    private CanvasGroup cg;
     private int health;
-    private bool dead;
     private Vector3 respawnPosition;
     private bool immune;
-    private float immunityDuration = 1f;
+    private readonly float immunityDuration = 1f;
 
 
     private void Start()
     {
         health = maxHealth;
-        healthbar = GameObject.FindGameObjectWithTag("Healthbar").GetComponent<Healthbar>();
-        cg = GameObject.FindGameObjectWithTag("DeathScreen").GetComponent<CanvasGroup>();
+        if (healthbar == null)
+        {
+            healthbar = GameObject.FindGameObjectWithTag("Healthbar").GetComponent<Healthbar>();
+        }
+        if (cg == null)
+        {
+            cg = GameObject.FindGameObjectWithTag("DeathScreen").GetComponent<CanvasGroup>();
+        }
         cg.alpha = 0;
         respawnPosition = transform.position;
         immune = false;
-    }
-
-    private void Update()
-    {
-        if (dead)
-        {
-            transform.position = respawnPosition;
-        }
-        if (immune == true)
-        {
-
-        }
     }
 
     public void PlayerHeal(int healing)
@@ -76,14 +68,12 @@ public class PlayerHealth : MonoBehaviour
     private void Die()
     {
         cg.alpha = 1;
-        dead = true;
         transform.position = respawnPosition;
         Invoke("ResetDead", 3);
     }
 
     private void ResetDead()
     {
-        dead = false;
         cg.alpha = 0;
         PlayerHeal(1000);
     }
