@@ -1,7 +1,4 @@
-using JetBrains.Rider.Unity.Editor;
 using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
@@ -24,10 +21,17 @@ public class PlayerMovement : MonoBehaviour
     public float crouchYScale;
     private float startYScale;
 
+    [Header("Dodging")]
+    public float DodgeForce;
+    public float DodgeJumpHeight;
+    public float DodgeDuration;
+    private PlayerHealth playerHealth;
+
     [Header("Keybinds")]
     public KeyCode jumpKey = KeyCode.Space;
     public KeyCode sprintKey = KeyCode.LeftShift;
     public KeyCode crouchKey = KeyCode.LeftControl;
+    public KeyCode dodgeKey = KeyCode.Q;
 
     [Header("Ground Check")]
     public float playerHeight;
@@ -53,7 +57,6 @@ public class PlayerMovement : MonoBehaviour
     Vector3 moveDirection;
 
     Rigidbody rb;
-    CapsuleCollider col;
 
     public MovementState state;
 
@@ -62,12 +65,14 @@ public class PlayerMovement : MonoBehaviour
         walking,
         sprinting,
         crouching,
+        dodging,
         air
     }
 
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
+        playerHealth = GetComponent<PlayerHealth>();
         rb.freezeRotation = true;
 
         readyToJump = true;
@@ -122,17 +127,22 @@ public class PlayerMovement : MonoBehaviour
             rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
             RideHeight = RideHeight / 2;
         }
-
         // stop crouching
         if (Input.GetKeyUp(crouchKey))
         {
             transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
             RideHeight = RideHeight * 2;
         }
+
+        // dodge roll
+        if (Input.GetKeyDown(dodgeKey))
+        {
+            Dodge();
+        }
     }
 
     private void StateHandler()
-    { 
+    {
         // changes state to the respective MovementState
         if (Input.GetKey(sprintKey))
         {
@@ -209,6 +219,61 @@ public class PlayerMovement : MonoBehaviour
                 rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
             }
         }
+    }
+
+    private void Dodge()
+    {
+        Vector3 dodgeDirection = moveDirection.normalized;
+        if (dodgeDirection == Vector3.zero)
+        {
+            dodgeDirection = transform.forward;
+        }
+
+        if (rb != null)
+        {
+            rb.velocity = Vector3.zero;
+
+            Vector3 horizontalDirection = new Vector3(dodgeDirection.x, 0f, dodgeDirection.z).normalized;
+            Vector3 horizontalVelocity = horizontalDirection * DodgeForce;
+            Vector3 verticalVelocity = Vector3.up * DodgeJumpHeight;
+
+            rb.velocity = horizontalVelocity + verticalVelocity;
+
+            rb.drag = 0f;
+        }
+
+        StartCoroutine(DodgeRollSequence(DodgeDuration));
+    }
+
+    // Coroutine to handle the front flip animation and invincibility frames
+    private IEnumerator DodgeRollSequence(float duration)
+    {
+        // Store original drag and rotation
+        float originalDrag = rb.drag;
+        Quaternion originalRotation = transform.localRotation;
+
+        // Start invincibility and lock state
+        playerHealth.StartImmunity();
+        state = MovementState.dodging;
+
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            float progress = elapsedTime / duration;
+
+            float rollAngle = progress * 360f;
+            transform.localRotation = originalRotation * Quaternion.Euler(rollAngle, 0f, 0f);
+
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        transform.localRotation = originalRotation;
+
+        // Cleanup
+        playerHealth.EndImmunity();
+        rb.drag = originalDrag;
     }
 
     // jumps

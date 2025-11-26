@@ -279,6 +279,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7de4fb1f9a7555c47b19a23c84b687e4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  damageAmount: 10
 --- !u!136 &175917593
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -3115,6 +3116,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7de4fb1f9a7555c47b19a23c84b687e4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  damageAmount: 10
 --- !u!136 &1471746154
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -6547,9 +6549,37 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1995803115}
     m_Modifications:
+    - target: {fileID: 2964741905085831927, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.4700001
+      objectReference: {fileID: 0}
+    - target: {fileID: 2964741905085831927, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -6
+      objectReference: {fileID: 0}
+    - target: {fileID: 2964741905085831927, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2964741905085831927, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.000000014901159
+      objectReference: {fileID: 0}
     - target: {fileID: 3556193351943680941, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
       propertyPath: m_Name
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 5300215085965120577, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
+      propertyPath: DodgeForce
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 5300215085965120577, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
+      propertyPath: DodgeDuration
+      value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5300215085965120577, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
+      propertyPath: DodgeJumpHeight
+      value: 9
       objectReference: {fileID: 0}
     - target: {fileID: 6849807121186502470, guid: 088e49f3cc2793a4fbc1288f98a016ae, type: 3}
       propertyPath: m_LocalPosition.x

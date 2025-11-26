@@ -4,12 +4,11 @@ using UnityEngine;
 
 public class EnemyHurtBox : MonoBehaviour
 {
-    private PlayerHealth healthbar;
     private Collider collider;
+    public int damageAmount = 10;
 
     void Start()
     {
-        healthbar = GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerHealth>();
         collider = GetComponent<Collider>();
     }
 
@@ -17,7 +16,7 @@ public class EnemyHurtBox : MonoBehaviour
     {
         if (other.gameObject.tag == "Player")
         {
-            healthbar.PlayerTakeDMG(10);
+            other.gameObject.GetComponent<PlayerHealth>().PlayerTakeDMG(damageAmount);
             collider.enabled = false;
         }
     }

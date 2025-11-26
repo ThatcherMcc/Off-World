@@ -60,7 +60,11 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
-    private void EndImmunity()
+    public void StartImmunity()
+    {
+        immune = true;
+    }
+    public void EndImmunity()
     {
         immune = false;
     }
