@@ -10,10 +10,13 @@ public class RockBossHeadLook : MonoBehaviour
     [SerializeField] float headMaxTurnAngle;
     [SerializeField] float headTrackingSpeed;
 
-    // How fast we can turn and move full throttle
+    [Header("Root turn speed")]
+    [Tooltip("Multiplier for turn speed (e.g. 1.5 = turn 50% faster).")]
+    [SerializeField] float turnSpeedMultiplier = 1f;
+    [Tooltip("How fast we can turn at full throttle (deg/s).")]
     [SerializeField] float startTurnSpeed;
     private float turnSpeed;
-    // How fast we will reach the above speeds
+    [Tooltip("How quickly we ramp up to full turn speed.")]
     [SerializeField] float turnAcceleration;
     // If we are above this angle from the target, start turning
     [SerializeField] float maxAngToTarget;
@@ -26,7 +29,9 @@ public class RockBossHeadLook : MonoBehaviour
 
     private void Start()
     {
-        turnSpeed = startTurnSpeed;
+        target = GameObject.FindGameObjectWithTag("Player").transform;
+        headBone = GameObject.FindGameObjectWithTag("HEADBONE").transform;
+        turnSpeed = startTurnSpeed * Mathf.Max(0.01f, turnSpeedMultiplier);
     }
 
     void LateUpdate()
@@ -56,8 +61,7 @@ public class RockBossHeadLook : MonoBehaviour
         else
         {
             canSee = true;
-            turnSpeed = startTurnSpeed;
-            // Reset the timer when we are facing the target so it's ready for the next time
+            turnSpeed = startTurnSpeed * Mathf.Max(0.01f, turnSpeedMultiplier);
             nextSpeedIncreaseTime = Time.time;
         }
     }
@@ -104,27 +108,19 @@ public class RockBossHeadLook : MonoBehaviour
         currentAngleToTarget = angToTarget;
         float targetAngularVelocity = 0;
 
-        // If we are within the max angle (i.e. approximately facing the target)
-        // leave the target angular velocity at zero
         if (Mathf.Abs(angToTarget) > maxAngToTarget - 0.5f)
         {
-            // Angles in Unity are clockwise, so a positive angle here means to our right
             if (angToTarget > 0)
-            {
                 targetAngularVelocity = turnSpeed;
-            }
-            // Invert angular speed if target is to our left
             else
-            {
                 targetAngularVelocity = -turnSpeed;
-            }
         }
 
-        // Use our smoothing function to gradually change the velocity
+        float accel = turnAcceleration * Mathf.Max(0.01f, turnSpeedMultiplier);
         currentAngularVelocity = Mathf.Lerp(
           currentAngularVelocity,
           targetAngularVelocity,
-          1 - Mathf.Exp(-turnAcceleration * Time.deltaTime)
+          1 - Mathf.Exp(-accel * Time.deltaTime)
         );
 
         // Rotate the transform around the Y axis in world space, 
