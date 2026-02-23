@@ -4,7 +4,7 @@ using UnityEngine;
 using System.IO;
 using UnityEngine.Rendering;
 
-public class VillagerChatting : MonoBehaviour, InteractableI
+public class VillagerChatting : MonoBehaviour, IInteractable
 {
     [Header("Dialogue")]
     public GameObject chatBoxPanel; //  Assign the ChatBox Panel

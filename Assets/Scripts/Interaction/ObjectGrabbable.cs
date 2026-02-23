@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ObjectGrabbable : MonoBehaviour, InteractableI
+public class ObjectGrabbable : MonoBehaviour, IInteractable
 {
     private Rigidbody rb;
     public Transform objectGrabPointTransform;

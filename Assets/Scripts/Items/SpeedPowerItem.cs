@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SpeedPowerItem : MonoBehaviour, PowerItemI
+public class SpeedPowerItem : MonoBehaviour, IPowerItem
 {
     private GameObject player;
     private PlayerMovement playerMovement;

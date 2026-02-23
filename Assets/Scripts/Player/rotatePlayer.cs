@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class rotatePlayer : MonoBehaviour
+public class RotatePlayer : MonoBehaviour
 {
     public Transform rotation;
     void Update()

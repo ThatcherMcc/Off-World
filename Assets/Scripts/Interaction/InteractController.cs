@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using OffWorld.Anatomy;
 
 public class InteractController : MonoBehaviour
 {
@@ -74,24 +75,48 @@ public class InteractController : MonoBehaviour
 
     }
 
+    /// <summary>Combined mask so both items and enemy corpses are interactable via E key.</summary>
+    private LayerMask CombinedInteractMask => InteractLayerMask | enemyInteractLayerMask;
+
+    /// <summary>What the player is currently looking at for harvest prompt rendering.</summary>
+    public CreatureCorpse LookedAtCorpse { get; private set; }
+    public EnemyHealth LookedAtIncapCreature { get; private set; }
+
     private void UICheck()
     {
-        if (Physics.SphereCast(fpsCam.position, InteractRadius, fpsCam.forward, out RaycastHit raycastHit, InteractRange, InteractLayerMask))
+        LookedAtCorpse = null;
+        LookedAtIncapCreature = null;
+
+        if (Physics.SphereCast(fpsCam.position, InteractRadius, fpsCam.forward, out RaycastHit raycastHit, InteractRange, CombinedInteractMask))
         {
-            if (raycastHit.transform.TryGetComponent(out InteractableI newInteractable))
+            // Check for IInteractable (items, corpses)
+            if (raycastHit.transform.TryGetComponent(out IInteractable _))
             {
+                // Track corpse for custom prompt
+                var corpse = raycastHit.transform.GetComponent<CreatureCorpse>();
+                if (corpse != null)
+                    LookedAtCorpse = corpse;
+
                 if (!chatting)
-                {
-                    cg.alpha = 1;
-                } else
-                {
-                    cg.alpha = 0;  
-                }
+                    cg.alpha = corpse != null ? 0 : 1; // Hide default prompt for corpses (custom prompt handles it)
+                else
+                    cg.alpha = 0;
+                return;
             }
-            else
+
+            // Check for incapacitated creature (extract path)
+            var enemyHealth = raycastHit.transform.GetComponent<EnemyHealth>();
+            if (enemyHealth == null)
+                enemyHealth = raycastHit.transform.GetComponentInParent<EnemyHealth>();
+
+            if (enemyHealth != null && enemyHealth.IsIncapacitated && !enemyHealth.HasBeenExtracted)
             {
-                cg.alpha = 0;
+                LookedAtIncapCreature = enemyHealth;
+                cg.alpha = 0; // Hide default prompt, custom prompt handles it
+                return;
             }
+
+            cg.alpha = 0;
         }
         else
         {
@@ -101,11 +126,29 @@ public class InteractController : MonoBehaviour
 
     private void Interact()
     {
-        if (Physics.SphereCast(fpsCam.position, InteractRadius, fpsCam.forward, out RaycastHit raycastHit, InteractRange, InteractLayerMask))
+        if (Physics.SphereCast(fpsCam.position, InteractRadius, fpsCam.forward, out RaycastHit raycastHit, InteractRange, CombinedInteractMask))
         {
-            if (raycastHit.transform.TryGetComponent(out InteractableI newInteractable))
+            // Standard IInteractable (items, corpses, NPCs)
+            if (raycastHit.transform.TryGetComponent(out IInteractable newInteractable))
             {
                 newInteractable.Interact(this);
+                return;
+            }
+
+            // Incapacitated creature (no IInteractable, but alive and downed -> extract path)
+            var enemyHealth = raycastHit.transform.GetComponent<EnemyHealth>();
+            if (enemyHealth == null)
+                enemyHealth = raycastHit.transform.GetComponentInParent<EnemyHealth>();
+
+            if (enemyHealth != null && enemyHealth.IsIncapacitated && !enemyHealth.HasBeenExtracted)
+            {
+                var loot = enemyHealth.GetComponent<CreatureLootTable>();
+                if (loot != null && loot.dnaSample != null)
+                {
+                    var extractUI = ExtractMenuUI.Instance;
+                    if (extractUI != null && !extractUI.IsShowing)
+                        extractUI.Show(enemyHealth, loot);
+                }
             }
         }
     }
@@ -129,7 +172,7 @@ public class InteractController : MonoBehaviour
 
     private void Eat()
     {
-        PowerItemI powerItem = heldObject.GetComponent<PowerItemI>() as PowerItemI;
+        IPowerItem powerItem = heldObject.GetComponent<IPowerItem>() as IPowerItem;
         if (powerItem != null)
         {
             powerItem.Eat();
