@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26ef8170a9c22c34e9cc6efc03a9cc3f, type: 3}
+  m_Name: DNASample
+  m_EditorClassIdentifier: 
+  sampleName: FrogDNASample
+  species: 1
+  tier: 0
+  icon: {fileID: 0}
+  activeAbilityComponentType: 
+  energyCost: 20
+  cooldown: 5
+  duration: 0
+  passiveModifiers:
+    maxHPFlat: 0
+    walkSpeedFlat: 0
+    sprintSpeedFlat: 0
+    jumpForceFlat: 30
+    dodgeForceFlat: 0
+    attackDamageFlat: 0
+    maxHPMult: 1
+    walkSpeedMult: 1
+    sprintSpeedMult: 1
+    jumpForceMult: 1
+    dodgeForceMult: 1
+    attackDamageMult: 1
+    airControlMult: 1
+    damageResistance: 0
+  degradedPowerMultiplier: 0.7
