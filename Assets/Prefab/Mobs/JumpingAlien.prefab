@@ -97,6 +97,8 @@ GameObject:
   - component: {fileID: 3375296345095642539}
   - component: {fileID: 8988391470936471766}
   - component: {fileID: 153855000363645796}
+  - component: {fileID: 314505522744556149}
+  - component: {fileID: 3805623716351146087}
   m_Layer: 9
   m_Name: JumpingAlien
   m_TagString: Untagged
@@ -214,6 +216,39 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   powerItem: {fileID: 1106180501215991137, guid: 2aee0db77866b294b9c63484ba786070, type: 3}
+--- !u!114 &314505522744556149
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4628941456387592699}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ff2755cbdbe9d41b141c02e1ab2990, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  species: 1
+  possibleGraftDrops:
+  - {fileID: 11400000, guid: 745b8e503888a9d4c8aa73c933809748, type: 2}
+  dnaSample: {fileID: 11400000, guid: 2b6489f87d4594f4189d9b4c384ed559, type: 2}
+  incapacitateThreshold: 0.15
+  vulnerableWindowDuration: 12
+  dropSpawnOffset: {x: 0, y: 1, z: 0}
+  partDropPickupPrefab: {fileID: 0}
+--- !u!114 &3805623716351146087
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4628941456387592699}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 679d72e1460ca2b47b6f1abe8dcea356, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useDownedAnimation: 1
 --- !u!1 &5748700907861700840
 GameObject:
   m_ObjectHideFlags: 0

@@ -15,6 +15,7 @@ TagManager:
   - Right
   - Enemy
   - BOSSHEALTHBAR
+  - HEADBONE
   layers:
   - Default
   - TransparentFX
