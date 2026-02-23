@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using BossFight.Strategies;
 using System.Linq;
-using UnityEditor;
 
 
 namespace BossFight.BehaviorTrees
@@ -213,7 +212,9 @@ namespace BossFight.BehaviorTrees
             var child = children[currentChild];
             var status = child.Process();
 
+#if UNITY_EDITOR
             Debug.Log($"Sequence '{name}': Child {currentChild} '{child.name}' returned {status}");
+#endif
 
             switch (status)
             {
@@ -221,7 +222,9 @@ namespace BossFight.BehaviorTrees
                     return Status.Running;
 
                 case Status.Failure:
+#if UNITY_EDITOR
                     Debug.Log($"Sequence '{name}': Failed at child {currentChild}, resetting");
+#endif
                     currentChild = 0;
                     return Status.Failure;
 
@@ -231,12 +234,16 @@ namespace BossFight.BehaviorTrees
                     // If we completed all children
                     if (currentChild >= children.Count)
                     {
+#if UNITY_EDITOR
                         Debug.Log($"Sequence '{name}': Completed all children successfully");
+#endif
                         currentChild = 0;
                         return Status.Success;
                     }
 
+#if UNITY_EDITOR
                     Debug.Log($"Sequence '{name}': Moving to child {currentChild}");
+#endif
                     // Continue to next child on next Process() call
                     return Status.Running;
             }
@@ -244,7 +251,9 @@ namespace BossFight.BehaviorTrees
 
         public override void Reset()
         {
+#if UNITY_EDITOR
             Debug.Log($"Sequence '{name}': Reset called");
+#endif
             base.Reset();
         }
     }
@@ -288,7 +297,9 @@ namespace BossFight.BehaviorTrees
             var child = children[currentChild];
             var status = child.Process();
 
+#if UNITY_EDITOR
             Debug.Log($"GuardedSequence '{name}': Child {currentChild} '{child.name}' returned {status}");
+#endif
 
             switch (status)
             {
@@ -302,7 +313,9 @@ namespace BossFight.BehaviorTrees
                     return Status.Running;
 
                 case Status.Failure:
+#if UNITY_EDITOR
                     Debug.Log($"GuardedSequence '{name}': Failed at child {currentChild}, running cleanup");
+#endif
                     if (!cleanupRan && hasStarted)
                     {
                         onComplete?.Invoke(); // Cleanup even on failure
@@ -327,7 +340,9 @@ namespace BossFight.BehaviorTrees
                     // If we completed all children
                     if (currentChild >= children.Count)
                     {
+#if UNITY_EDITOR
                         Debug.Log($"GuardedSequence '{name}': Completed all children successfully");
+#endif
                         if (!cleanupRan)
                         {
                             onComplete?.Invoke();
@@ -340,7 +355,9 @@ namespace BossFight.BehaviorTrees
                         return Status.Success;
                     }
 
+#if UNITY_EDITOR
                     Debug.Log($"GuardedSequence '{name}': Moving to child {currentChild}");
+#endif
                     return Status.Running;
             }
         }
@@ -349,7 +366,9 @@ namespace BossFight.BehaviorTrees
         {
             if (!cleanupRan && hasStarted)
             {
+#if UNITY_EDITOR
                 Debug.Log($"GuardedSequence '{name}': Reset called, running cleanup");
+#endif
                 onComplete?.Invoke();
             }
             hasStarted = false;
