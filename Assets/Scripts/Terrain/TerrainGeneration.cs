@@ -12,8 +12,6 @@ public class TerrainGeneration : MonoBehaviour
     ChunkGeneration chunkGen;
     GameObject player;
     private bool canSpawnPlayer = false;
-    private GameObject spawner;
-    private bool canSpawnSpawner = true;
     private GameObject ship;
     private bool canSpawnShip = false;
     private float waterLevel;
@@ -35,7 +33,6 @@ public class TerrainGeneration : MonoBehaviour
         {
             return;
         }
-        spawner = chunkGen.spawner;
         player = chunkGen.player;
         ship = chunkGen.ship;
         waterLevel = chunkGen.waterLevel;
@@ -52,19 +49,17 @@ public class TerrainGeneration : MonoBehaviour
         {
             canSpawnPlayer = true;
             canSpawnShip = true;
-            //Debug.Log("CANSPAWN");
         }
 
         meshFilter = GetComponent<MeshFilter>();
         meshRenderer = GetComponent<MeshRenderer>();
         meshCollider = GetComponent<MeshCollider>();
 
-        meshRenderer.material = chunkGen.terrainMaterial;
+        meshRenderer.material = chunkGen.TerrainMaterialForChunks;
 
         GenerateTerrain();
         chunkGen.totalLandCount += landCount;
         chunkGen.totalWaterCount += waterCount;
-        Invoke("SetSpawnerPlayer", 6f);
     }
 
     void GenerateTerrain()
@@ -114,26 +109,17 @@ public class TerrainGeneration : MonoBehaviour
                 {
                     TreeSpawn(x, y, z);
                 }
-                // spawner spawning w/ added noise
-                doesSpawn += Mathf.PerlinNoise((x + transform.position.x) * 0.03f + chunkGen.seed, (z + transform.position.z) * 0.03f + chunkGen.seed) * 0.35f;
-                // frog spawning
-                if (canSpawnSpawner && doesSpawn > chunkGen.frogSpawnerThreshold && y < waterLevel + 10 && y > waterLevel)
-                {
-                    SpawnerSpawn(x, y, z);
-                    //Debug.Log("Spawner made and added");
-                }
-                // wolf spawning
-                if (canSpawnSpawner && doesSpawn > chunkGen.wolfSpawnerThreshold && y < waterLevel + 120 && y > waterLevel + 50)
-                {
-                    SpawnerSpawn(x, y, z);
-                }
                 i++;
             }
         }
 
+        // World-space UVs scaled by terrainUVScale for consistent texture tiling across chunks
+        float uvScale = chunkGen.terrainUVScale;
         for (int i = 0; i < uv.Length; i++)
         {
-            uv[i] = new Vector2(vertices[i].x, vertices[i].z);
+            float worldX = transform.position.x + vertices[i].x;
+            float worldZ = transform.position.z + vertices[i].z;
+            uv[i] = new Vector2(worldX / uvScale, worldZ / uvScale);
         }
 
         triangles = new int[(int)(chunkGen.chunkResolution.x * chunkGen.chunkResolution.y * 6)];
@@ -278,29 +264,7 @@ public class TerrainGeneration : MonoBehaviour
 
         current.transform.parent = transform;
     }
-    private void SpawnerSpawn(float x, float y, float z)
-    {
-        GameObject current = Instantiate(spawner, new Vector3(x * (128 / chunkGen.chunkResolution.x) + transform.position.x,
-                       y + transform.position.y + 1f,
-                       z * (128 / chunkGen.chunkResolution.y) + transform.position.z),
-                       Quaternion.identity);
-        current.transform.parent = transform;
-        current.GetComponent<Spawner>().waterLevel = waterLevel;
-        spawner = current;
-        canSpawnSpawner = false;
-    }
 
-    private void SetSpawnerPlayer()
-    {
-        if (player != null)
-        {
-            Debug.Log("terrain player Not null");
-            spawner.GetComponent<Spawner>().player = chunkGen.currentPlayer;
-            Debug.Log(spawner.name + " Spawner assigned??");
-            
-        }
-        
-    }
     Vector3 GetTerrainNormal(int x, int z)
     {
         // Get the neighboring vertices to calculate the slope

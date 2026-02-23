@@ -14,22 +14,26 @@ public class ChunkGeneration : MonoBehaviour
 
     [Header("Terrain Properties")]
     public Material terrainMaterial;
+    [Tooltip("Height above waterLevel where sand/beach starts (shader _Sand_Height).")]
+    public float sandHeightOffset = 1f;
+    [Tooltip("World-space scale for terrain UVs (higher = larger texture tiles across world).")]
+    public float terrainUVScale = 128f;
     // water details
     public GameObject water; // flat plane for water
     public float waterLevel; // y level water should be instantiated at
+
+    /// <summary>Runtime material with _Sand_Height set from waterLevel; used by terrain chunks.</summary>
+    private Material runtimeTerrainMaterial;
+
+    /// <summary>Material for terrain chunks (runtime instance with sand height, or asset if not yet generated).</summary>
+    public Material TerrainMaterialForChunks => runtimeTerrainMaterial != null ? runtimeTerrainMaterial : terrainMaterial;
     // tree details
     public GameObject[] trees; // list of my tree prefabs
     public float treeThreshold;
-    // spawner details
-    public GameObject spawner;
-    public float spawnerThreshold; 
     // ship details
     public GameObject ship;
     public GameObject currentShip;
     public bool shipSpawned = false;
-    // mob thresholds
-    public float frogSpawnerThreshold;
-    public float wolfSpawnerThreshold;
 
     public GameObject player;
     public GameObject currentPlayer;
@@ -38,6 +42,10 @@ public class ChunkGeneration : MonoBehaviour
     public int chunksChunkLoaded;
 
     public NavMeshSurface[] navMeshes;
+
+    [Header("Optional: Spawn Logic")]
+    [Tooltip("If assigned, receives player and ship transforms once they spawn (no per-frame lookup).")]
+    public ChunkManager chunkManager;
 
     public float landThresholdMin;
     public float landThresholdMax;
@@ -49,7 +57,6 @@ public class ChunkGeneration : MonoBehaviour
 
     private void Start()
     {
-        navMeshes = GetComponents<NavMeshSurface>();
         StartCoroutine(FindValidSeedThenGenerate());
     }
 
@@ -84,23 +91,27 @@ public class ChunkGeneration : MonoBehaviour
                 totalLandCount = 0;
                 totalWaterCount = 0;
 
+                // Create runtime terrain material so sand band follows water level for this seed
+                runtimeTerrainMaterial = new Material(terrainMaterial);
+                runtimeTerrainMaterial.SetFloat("_Sand_Height", waterLevel + sandHeightOffset);
+
                 // Now that we have a good seed, generate the actual chunks
                 yield return StartCoroutine(GenerateChunks());
                 // Create water
                 GameObject current = Instantiate(water,
-                    new Vector3(((128 * chunks.x) / 2) - chunkMiddle.x, waterLevel,
-                    ((128 * chunks.y) / 2) - chunkMiddle.y),
+                    new Vector3((128 * chunks.x / 2) - chunkMiddle.x, waterLevel,
+                    (128 * chunks.y / 2) - chunkMiddle.y),
                     Quaternion.identity
                 );
                 current.transform.localScale = new Vector3(12.9f, 12.9f, 12.9f) * chunks.x;
-                // Build navigation mesh
-                //foreach (NavMeshSurface navMesh in navMeshes)
-                //{
-                //    if (navMesh != null)
-                //    {
-                //       navMesh.BuildNavMesh();
-                //    }
-                //}
+
+                // Assign player and ship to ChunkManager once (no per-frame checks)
+                var cm = chunkManager != null ? chunkManager : GetComponent<ChunkManager>();
+                if (cm != null)
+                {
+                    if (currentPlayer != null) cm.SetPlayer(currentPlayer.transform);
+                    if (currentShip != null) cm.SetShip(currentShip.transform);
+                }
             }
         }
     }
@@ -114,9 +125,9 @@ public class ChunkGeneration : MonoBehaviour
             for (int chunkZ = 0; chunkZ < chunks.y; chunkZ++)
             {
                 Vector3 chunkPosition = new Vector3(
-                    chunkX * (chunkResolution.x) * (128 / chunkResolution.x) - chunkMiddle.x,
+                    chunkX * chunkResolution.x * (128 / chunkResolution.x) - chunkMiddle.x,
                     0,
-                    chunkZ * (chunkResolution.y) * (128 / chunkResolution.y) - chunkMiddle.y
+                    chunkZ * chunkResolution.y * (128 / chunkResolution.y) - chunkMiddle.y
                 );
 
                 // Simulate each point in the chunk
