@@ -4,7 +4,7 @@ namespace OffWorld.Anatomy
 {
     /// <summary>
     /// Attach to any creature prefab to define what it drops on death (graft parts)
-    /// and what DNA it yields on incapacitation.
+    /// and what DNA it yields when harvested.
     /// </summary>
     public class CreatureLootTable : MonoBehaviour
     {
@@ -15,15 +15,11 @@ namespace OffWorld.Anatomy
         [Tooltip("Each entry has a GraftPartSO and inherits the drop rate from the SO.")]
         public GraftPartSO[] possibleGraftDrops;
 
-        [Header("DNA Yield (on incapacitate)")]
+        [Header("DNA Yield (on extract)")]
         public DNASampleSO dnaSample;
 
-        [Header("Incapacitation Settings")]
-        [Range(0.05f, 0.4f)]
-        [Tooltip("HP fraction at which this creature becomes incapacitated instead of dying.")]
-        public float incapacitateThreshold = 0.15f;
-
-        [Tooltip("Seconds the creature stays in the incapacitated state before recovering.")]
+        [Header("Downed State")]
+        [Tooltip("Seconds the creature stays downed before recovering.")]
         public float vulnerableWindowDuration = 12f;
 
         [Header("Drop Spawn")]
@@ -47,19 +43,6 @@ namespace OffWorld.Anatomy
                 }
             }
             return drops.ToArray();
-        }
-
-        /// <summary>
-        /// Determines DNA tier based on how precisely the creature was incapacitated.
-        /// If the creature's remaining HP fraction is within the "sweet spot" (lower half of
-        /// the threshold window), it yields Prime DNA. Otherwise, Degraded.
-        /// </summary>
-        public DNATier DetermineDNATier(float currentHealthNormalized)
-        {
-            float sweetSpot = incapacitateThreshold * 0.5f;
-            if (currentHealthNormalized <= sweetSpot)
-                return DNATier.Prime;
-            return DNATier.Degraded;
         }
     }
 }

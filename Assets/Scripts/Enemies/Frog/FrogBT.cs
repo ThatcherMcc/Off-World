@@ -12,7 +12,7 @@ using BossFight.Strategies;
 ///
 /// The frog is prey -- it never attacks, only flees.
 /// </summary>
-public class FrogBT : MonoBehaviour, IEnemy
+public class FrogBT : MonoBehaviour, IEnemy, IFleeable
 {
     [Header("Awareness")]
     [SerializeField] private float noticeRadius = 8f;
@@ -32,6 +32,11 @@ public class FrogBT : MonoBehaviour, IEnemy
     // IEnemy
     public Transform player { get; set; }
     private bool aiEnabled = true;
+
+    // Flee override
+    private bool isForceFleeing;
+    private float fleeTimer;
+    private float savedNoticeRadius;
 
     private Rigidbody rb;
     private BehaviorTree tree;
@@ -57,16 +62,24 @@ public class FrogBT : MonoBehaviour, IEnemy
     {
         if (!aiEnabled)
         {
-            // Stop all movement when AI disabled (incapacitated or dead)
             if (rb != null)
             {
                 rb.velocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
-            // Lock rotation to what it was at the moment of incapacitation
-            // This overrides Animator, physics, and everything else
             transform.rotation = frozenRotation;
             return;
+        }
+
+        // Countdown flee override
+        if (isForceFleeing)
+        {
+            fleeTimer -= Time.deltaTime;
+            if (fleeTimer <= 0f)
+            {
+                isForceFleeing = false;
+                noticeRadius = savedNoticeRadius;
+            }
         }
 
         tree?.Process();
@@ -121,6 +134,14 @@ public class FrogBT : MonoBehaviour, IEnemy
             rb.angularVelocity = Vector3.zero;
             tree?.Reset();
         }
+    }
+
+    public void StartFlee(float duration)
+    {
+        savedNoticeRadius = noticeRadius;
+        noticeRadius = 999f; // Always detect player so frog keeps fleeing
+        isForceFleeing = true;
+        fleeTimer = duration;
     }
 
     private void OnDrawGizmosSelected()

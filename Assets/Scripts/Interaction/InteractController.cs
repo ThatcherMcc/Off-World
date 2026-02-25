@@ -80,16 +80,21 @@ public class InteractController : MonoBehaviour
 
     /// <summary>What the player is currently looking at for harvest prompt rendering.</summary>
     public CreatureCorpse LookedAtCorpse { get; private set; }
-    public EnemyHealth LookedAtIncapCreature { get; private set; }
+    /// <summary>Downed creature the player is looking at (for unified harvest menu).</summary>
+    public EnemyHealth LookedAtDownedCreature { get; private set; }
+
+    /// <summary>Base station the player is looking at (ExtractionChamber or SurgeryTable).</summary>
+    public MonoBehaviour LookedAtBaseStation { get; private set; }
 
     private void UICheck()
     {
         LookedAtCorpse = null;
-        LookedAtIncapCreature = null;
+        LookedAtDownedCreature = null;
+        LookedAtBaseStation = null;
 
         if (Physics.SphereCast(fpsCam.position, InteractRadius, fpsCam.forward, out RaycastHit raycastHit, InteractRange, CombinedInteractMask))
         {
-            // Check for IInteractable (items, corpses)
+            // Check for IInteractable (items, corpses, base stations)
             if (raycastHit.transform.TryGetComponent(out IInteractable _))
             {
                 // Track corpse for custom prompt
@@ -97,21 +102,34 @@ public class InteractController : MonoBehaviour
                 if (corpse != null)
                     LookedAtCorpse = corpse;
 
+                // Track base stations for custom prompt
+                var chamber = raycastHit.transform.GetComponent<ExtractionChamber>();
+                var table = raycastHit.transform.GetComponent<SurgeryTable>();
+                var terminal = raycastHit.transform.GetComponent<StorageTerminal>();
+                if (chamber != null)
+                    LookedAtBaseStation = chamber;
+                else if (table != null)
+                    LookedAtBaseStation = table;
+                else if (terminal != null)
+                    LookedAtBaseStation = terminal;
+
+                // Hide default prompt for corpses and base stations (custom prompts handle them)
+                bool hasCustomPrompt = corpse != null || LookedAtBaseStation != null;
                 if (!chatting)
-                    cg.alpha = corpse != null ? 0 : 1; // Hide default prompt for corpses (custom prompt handles it)
+                    cg.alpha = hasCustomPrompt ? 0 : 1;
                 else
                     cg.alpha = 0;
                 return;
             }
 
-            // Check for incapacitated creature (extract path)
+            // Check for downed creature (unified harvest menu)
             var enemyHealth = raycastHit.transform.GetComponent<EnemyHealth>();
             if (enemyHealth == null)
                 enemyHealth = raycastHit.transform.GetComponentInParent<EnemyHealth>();
 
             if (enemyHealth != null && enemyHealth.IsIncapacitated && !enemyHealth.HasBeenExtracted)
             {
-                LookedAtIncapCreature = enemyHealth;
+                LookedAtDownedCreature = enemyHealth;
                 cg.alpha = 0; // Hide default prompt, custom prompt handles it
                 return;
             }
@@ -135,7 +153,7 @@ public class InteractController : MonoBehaviour
                 return;
             }
 
-            // Incapacitated creature (no IInteractable, but alive and downed -> extract path)
+            // Incapacitated creature (no IInteractable, but alive and downed -> harvest choice)
             var enemyHealth = raycastHit.transform.GetComponent<EnemyHealth>();
             if (enemyHealth == null)
                 enemyHealth = raycastHit.transform.GetComponentInParent<EnemyHealth>();
@@ -143,11 +161,11 @@ public class InteractController : MonoBehaviour
             if (enemyHealth != null && enemyHealth.IsIncapacitated && !enemyHealth.HasBeenExtracted)
             {
                 var loot = enemyHealth.GetComponent<CreatureLootTable>();
-                if (loot != null && loot.dnaSample != null)
+                if (loot != null)
                 {
-                    var extractUI = ExtractMenuUI.Instance;
-                    if (extractUI != null && !extractUI.IsShowing)
-                        extractUI.Show(enemyHealth, loot);
+                    var harvestUI = HarvestChoiceMenuUI.Instance;
+                    if (harvestUI != null && !harvestUI.IsShowing)
+                        harvestUI.Show(enemyHealth, loot);
                 }
             }
         }

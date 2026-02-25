@@ -111,7 +111,7 @@ public class ExtractMenuUI : MonoBehaviour
         targetLoot = loot;
         creatureName = enemy.gameObject.name.Replace("(Clone)", "").Trim();
         dnaSample = loot.dnaSample;
-        dnaTier = loot.DetermineDNATier(enemy.GetHealthNormalized());
+        dnaTier = DNATier.Prime;
         channelProgress = 0f;
         channelInterrupted = false;
         interruptFlashTimer = 0f;
@@ -169,7 +169,7 @@ public class ExtractMenuUI : MonoBehaviour
 
     private void CompleteExtraction()
     {
-        if (targetHealth == null || anatomyManager == null) return;
+        if (targetHealth == null) return;
 
         targetHealth.MarkExtracted();
 
@@ -177,41 +177,13 @@ public class ExtractMenuUI : MonoBehaviour
         if (energy == null) energy = GetComponentInParent<SuitEnergy>();
         energy?.OnIncapacitate();
 
-        displacedDNA = null;
-        loadedSlotIndex = -1;
-        loadedSlotType = "Active";
+        // Add to base storage instead of equipping directly
+        if (BaseStorage.Instance != null)
+            BaseStorage.Instance.AddSample(dnaSample);
 
-        for (int i = 0; i < anatomyManager.Suit.UnlockedActiveSlots; i++)
-        {
-            if (anatomyManager.Suit.GetActiveSlot(i) == null)
-            {
-                anatomyManager.LoadActiveDNA(i, dnaSample);
-                loadedSlotIndex = i + 1;
-                loadedSlotType = "Active";
-                break;
-            }
-        }
-
-        if (loadedSlotIndex == -1)
-        {
-            for (int i = 0; i < anatomyManager.Suit.UnlockedPassiveSlots; i++)
-            {
-                if (anatomyManager.Suit.GetPassiveSlot(i) == null)
-                {
-                    anatomyManager.LoadPassiveDNA(i, dnaSample);
-                    loadedSlotIndex = i + 1;
-                    loadedSlotType = "Passive";
-                    break;
-                }
-            }
-        }
-
-        if (loadedSlotIndex == -1)
-        {
-            displacedDNA = anatomyManager.LoadActiveDNA(0, dnaSample);
-            loadedSlotIndex = 1;
-            loadedSlotType = "Active";
-        }
+        // Dispatch drone for visual
+        if (anatomyManager != null && anatomyManager.DroneConfig != null && targetHealth != null)
+            DronePickup.Dispatch(targetHealth.gameObject, anatomyManager.DroneConfig);
 
         state = State.Result;
     }
@@ -416,18 +388,11 @@ public class ExtractMenuUI : MonoBehaviour
         HarvestUIStyles.DrawSeparator(new Rect(panel.x + pad, y, cw, 1), HarvestUIStyles.SeaGreen);
         y += 14;
 
-        GUI.Label(new Rect(panel.x + pad, y, cw, 22), $"Loaded into: {loadedSlotType} Slot {loadedSlotIndex}", sectionHeader);
+        GUI.Label(new Rect(panel.x + pad, y, cw, 22), "Sent to base via drone", sectionHeader);
         y += 28;
 
-        if (displacedDNA != null)
-        {
-            var dispStyle = HarvestUIStyles.MakeLabel(15, HarvestUIStyles.WarningAmber);
-            GUI.Label(new Rect(panel.x + pad, y, cw, 22), $"Replaced: {displacedDNA.sampleName}", dispStyle);
-            y += 26;
-        }
-
         var buffStyle = HarvestUIStyles.MakeLabel(15, HarvestUIStyles.TealPrimary);
-        GUI.Label(new Rect(panel.x + pad, y, cw, 22), "Suit buffs now active", buffStyle);
+        GUI.Label(new Rect(panel.x + pad, y, cw, 22), "Use Extraction Chamber at base to load into suit", buffStyle);
         y += 26;
 
         float btnW = 200;
@@ -451,10 +416,10 @@ public class ExtractMenuUI : MonoBehaviour
             if (anatomyManager.Suit.GetActiveSlot(i) == null)
                 return $"--> Active Slot {i + 1}";
         }
-        for (int i = 0; i < anatomyManager.Suit.UnlockedPassiveSlots; i++)
+        for (int i = 0; i < anatomyManager.Suit.UnlockedOrganSlots; i++)
         {
-            if (anatomyManager.Suit.GetPassiveSlot(i) == null)
-                return $"--> Passive Slot {i + 1}";
+            if (anatomyManager.Suit.GetOrganSlot(i) == null)
+                return $"--> Organ Slot {i + 1}";
         }
         var existing = anatomyManager.Suit.GetActiveSlot(0);
         string name = existing != null ? existing.sampleName : "DNA";

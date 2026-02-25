@@ -10,21 +10,16 @@ public class EnemyHealth : MonoBehaviour
     [SerializeField] private bool activated = true;
     [SerializeField] private int maxHealth = 100;
 
-    [Header("Incapacitation")]
-    [Tooltip("If true, this creature can be incapacitated instead of killed.")]
-    [SerializeField] private bool canBeIncapacitated = true;
-    [Range(0.05f, 0.4f)]
-    [Tooltip("HP fraction at which incapacitation triggers (e.g. 0.15 = 15% HP).")]
-    [SerializeField] private float incapacitateThreshold = 0.15f;
-    [Tooltip("Seconds the creature stays incapacitated before recovering.")]
+    [Header("Downed State")]
+    [Tooltip("Seconds the creature stays downed before recovering.")]
     [SerializeField] private float vulnerableWindowDuration = 12f;
 
     private bool isIncapacitated;
-    private bool hasBeenExtracted; // Prevents double-extraction
+    private bool hasBeenExtracted;
 
-    /// <summary>Fired when creature is incapacitated (HP hits threshold). Passes remaining HP fraction.</summary>
+    /// <summary>Fired when creature collapses at 1 HP. Passes remaining HP fraction.</summary>
     public event Action<float> OnIncapacitated;
-    /// <summary>Fired when creature recovers from incapacitation.</summary>
+    /// <summary>Fired when creature recovers from downed state.</summary>
     public event Action OnRecovered;
     /// <summary>Fired when creature dies. Systems can hook this for loot drops.</summary>
     public event Action OnDied;
@@ -33,7 +28,7 @@ public class EnemyHealth : MonoBehaviour
     public bool HasBeenExtracted => hasBeenExtracted;
     public int MaxHealth => maxHealth;
 
-    /// <summary>Seconds remaining before the creature recovers from incapacitation. Updated every frame.</summary>
+    /// <summary>Seconds remaining before the creature recovers. Updated every frame.</summary>
     public float IncapTimeRemaining { get; private set; }
 
     private void Awake()
@@ -57,45 +52,38 @@ public class EnemyHealth : MonoBehaviour
 
     public void HurtEnemy(int dmg)
     {
-        if (activated)
+        if (!activated) return;
+
+        // If already downed, any additional damage kills immediately
+        if (isIncapacitated)
         {
-            // If already incapacitated, additional damage kills
-            if (isIncapacitated)
-            {
-                health -= dmg;
-                healthbar?.SetHealth(health);
-                if (health <= 0)
-                {
-                    isIncapacitated = false;
-                    IncapTimeRemaining = 0f;
-
-                    // Flash: player killed the specimen instead of extracting
-                    if (HarvestFlashUI.Instance != null)
-                        HarvestFlashUI.Instance.ShowFlash("SPECIMEN KILLED",
-                            "DNA extraction no longer possible",
-                            HarvestUIStyles.DangerRed, HarvestUIStyles.BurntOrange,
-                            HarvestUIStyles.FlashRedBG, 2f);
-
-                    Die();
-                }
-                return;
-            }
-
-            health -= dmg;
+            health = 0;
+            isIncapacitated = false;
+            IncapTimeRemaining = 0f;
             healthbar?.SetHealth(health);
 
-            // Check for incapacitation before death
-            if (canBeIncapacitated && !hasBeenExtracted && health > 0 && GetHealthNormalized() <= incapacitateThreshold)
-            {
-                Incapacitate();
-                return;
-            }
+            if (HarvestFlashUI.Instance != null)
+                HarvestFlashUI.Instance.ShowFlash("SPECIMEN KILLED",
+                    "DNA extraction no longer possible",
+                    HarvestUIStyles.DangerRed, HarvestUIStyles.BurntOrange,
+                    HarvestUIStyles.FlashRedBG, 2f);
 
-            if (health <= 0)
-            {
-                Die();
-            }
+            Die();
+            return;
         }
+
+        health -= dmg;
+
+        // Creature collapses at 1 HP instead of dying
+        if (health <= 1)
+        {
+            health = 1;
+            healthbar?.SetHealth(health);
+            Incapacitate();
+            return;
+        }
+
+        healthbar?.SetHealth(health);
     }
 
     private void Update()
@@ -118,28 +106,40 @@ public class EnemyHealth : MonoBehaviour
         OnIncapacitated?.Invoke(GetHealthNormalized());
 
 #if UNITY_EDITOR
-        Debug.Log($"[EnemyHealth] {gameObject.name} incapacitated at {GetHealthNormalized():P0} HP. Window: {vulnerableWindowDuration}s");
+        Debug.Log($"[EnemyHealth] {gameObject.name} collapsed at 1 HP. Window: {vulnerableWindowDuration}s");
 #endif
     }
 
     private void Recover()
     {
         isIncapacitated = false;
-        // Heal to just above threshold so the creature can fight again
-        int healTarget = Mathf.CeilToInt(maxHealth * (incapacitateThreshold + 0.1f));
+        // Heal to 25% so the creature can flee or fight
+        int healTarget = Mathf.CeilToInt(maxHealth * 0.25f);
         health = Mathf.Max(health, healTarget);
         healthbar?.SetHealth(health);
         OnRecovered?.Invoke();
 
 #if UNITY_EDITOR
-        Debug.Log($"[EnemyHealth] {gameObject.name} recovered from incapacitation.");
+        Debug.Log($"[EnemyHealth] {gameObject.name} recovered from downed state.");
 #endif
     }
 
-    /// <summary>Mark that DNA has been extracted. Prevents re-incapacitation.</summary>
+    /// <summary>Mark that DNA has been extracted. If killed later, parts will be degraded.</summary>
     public void MarkExtracted()
     {
         hasBeenExtracted = true;
+    }
+
+    /// <summary>
+    /// Force-kill the creature. Called by the harvest menu when player chooses HARVEST PARTS.
+    /// </summary>
+    public void ForceKill()
+    {
+        health = 0;
+        isIncapacitated = false;
+        IncapTimeRemaining = 0f;
+        healthbar?.SetHealth(health);
+        Die();
     }
 
     private void Die()

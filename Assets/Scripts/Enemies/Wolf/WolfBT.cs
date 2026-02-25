@@ -3,16 +3,16 @@ using BossFight.BehaviorTrees;
 using BossFight.Strategies;
 
 /// <summary>
-/// Behavior-tree-driven wolf AI. Replaces the NavMesh-based WolfAI.
-/// Uses Rigidbody physics for all movement.
+/// Behavior-tree-driven wolf AI. Uses Rigidbody physics for all movement.
 ///
 /// Behavior:
+///   Priority 3 - Flee: if fleeing after extraction → run from player for duration
 ///   Priority 2 - Chase: if the player is within notice radius, in FOV, and has LOS → chase via Rigidbody velocity.
 ///   Priority 1 - Idle:  wander randomly near spawn point.
 ///
 /// Damage is still handled by WolfAttack (collision-based), so the wolf just needs to reach the player.
 /// </summary>
-public class WolfBT : MonoBehaviour, IEnemy
+public class WolfBT : MonoBehaviour, IEnemy, IFleeable
 {
     [Header("Awareness")]
     [SerializeField] private float noticeRadius = 12f;
@@ -32,6 +32,10 @@ public class WolfBT : MonoBehaviour, IEnemy
     // IEnemy
     public Transform player { get; set; }
     private bool aiEnabled = true;
+
+    // Flee state
+    private bool isFleeing;
+    private float fleeDuration;
 
     private Rigidbody rb;
     private BehaviorTree tree;
@@ -57,13 +61,12 @@ public class WolfBT : MonoBehaviour, IEnemy
     {
         if (!aiEnabled)
         {
-            // Stop all movement when AI disabled (incapacitated or dead)
+            // Stop all movement when AI disabled (downed or dead)
             if (rb != null)
             {
                 rb.velocity = new Vector3(0f, rb.velocity.y, 0f);
                 rb.angularVelocity = Vector3.zero;
             }
-            // Lock rotation to what it was at the moment of incapacitation
             transform.rotation = frozenRotation;
             return;
         }
@@ -75,6 +78,17 @@ public class WolfBT : MonoBehaviour, IEnemy
     {
         tree = new BehaviorTree("Wolf");
         var root = new PrioritySelector("WolfRoot");
+
+        // --- Flee (priority 3 — highest) ---
+        var flee = new Sequence("Flee", priority: 3);
+        flee.AddChild(new Leaf("IsFleeing", new Condition(() => isFleeing)));
+        flee.AddChild(new Leaf("FleeFromPlayer",
+            new FleeFromPlayerStrategy(rb, player, chaseSpeed * 1.2f, smoothing, fleeDuration)));
+        flee.AddChild(new Leaf("StopFleeing", new ActionStrategy(() =>
+        {
+            isFleeing = false;
+        })));
+        root.AddChild(flee);
 
         // --- Chase (priority 2) ---
         var chase = new Sequence("Chase", priority: 2);
@@ -120,6 +134,14 @@ public class WolfBT : MonoBehaviour, IEnemy
             rb.angularVelocity = Vector3.zero;
             tree?.Reset();
         }
+    }
+
+    public void StartFlee(float duration)
+    {
+        isFleeing = true;
+        fleeDuration = duration;
+        // Rebuild tree so the flee node picks up the new duration
+        BuildTree();
     }
 
     private void OnDrawGizmosSelected()

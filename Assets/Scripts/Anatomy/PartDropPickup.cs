@@ -3,8 +3,9 @@ using OffWorld.Anatomy;
 
 /// <summary>
 /// A world pickup for a graft body part dropped by a killed creature.
-/// The player interacts with it to graft the part onto themselves.
-/// Implements IInteractable so the existing InteractController can pick it up.
+/// The player interacts with it to collect the part — a drone flies in,
+/// grabs it, and transports it to base storage.
+/// Implements IInteractable so the existing InteractController can detect it.
 /// </summary>
 public class PartDropPickup : MonoBehaviour, IInteractable
 {
@@ -49,40 +50,41 @@ public class PartDropPickup : MonoBehaviour, IInteractable
 
     /// <summary>
     /// Called when the player presses interact (E key) while looking at this pickup.
-    /// Grafts the part onto the player via AnatomyManager.
+    /// Sends the part to base storage via drone instead of grafting directly.
     /// </summary>
     public void Interact(InteractController controller)
     {
         if (graftPart == null) return;
 
-        // Find the AnatomyManager on the player
-        var anatomyManager = controller.GetComponent<AnatomyManager>();
-        if (anatomyManager == null)
-        {
-            anatomyManager = controller.GetComponentInParent<AnatomyManager>();
-        }
+        // Add to base storage immediately (drone is cosmetic)
+        if (BaseStorage.Instance != null)
+            BaseStorage.Instance.AddPart(graftPart);
 
-        if (anatomyManager != null)
-        {
-            anatomyManager.GraftPart(graftPart);
+        // Dispatch drone for visual pickup
+        var config = AnatomyManager.Instance != null ? AnatomyManager.Instance.DroneConfig : null;
+        if (config != null)
+            DronePickup.Dispatch(gameObject, config);
 
-            // Give energy for harvesting
-            var energy = controller.GetComponent<OffWorld.Anatomy.SuitEnergy>();
-            if (energy == null)
-                energy = controller.GetComponentInParent<OffWorld.Anatomy.SuitEnergy>();
-            energy?.OnHarvest();
+        // Show collection notification
+        if (HarvestFlashUI.Instance != null)
+            HarvestFlashUI.Instance.ShowFlash(
+                "PART COLLECTED",
+                $"{graftPart.partName} -- drone inbound",
+                HarvestUIStyles.AmberPrimary, HarvestUIStyles.MutedTan,
+                HarvestUIStyles.FlashSiennaBG, 2.5f);
+
+        // Give energy for harvesting
+        var energy = controller.GetComponent<SuitEnergy>();
+        if (energy == null)
+            energy = controller.GetComponentInParent<SuitEnergy>();
+        energy?.OnHarvest();
+
+        // Disable further interaction (drone handles destruction)
+        var collider = GetComponent<Collider>();
+        if (collider != null) collider.enabled = false;
 
 #if UNITY_EDITOR
-            Debug.Log($"[PartDropPickup] Player grafted '{graftPart.partName}' into {graftPart.slot}.");
+        Debug.Log($"[PartDropPickup] '{graftPart.partName}' sent to base storage via drone.");
 #endif
-
-            Destroy(gameObject);
-        }
-        else
-        {
-#if UNITY_EDITOR
-            Debug.LogWarning("[PartDropPickup] No AnatomyManager found on player.");
-#endif
-        }
     }
 }

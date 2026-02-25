@@ -3,8 +3,9 @@ using OffWorld.Anatomy;
 
 /// <summary>
 /// Attach to creature prefabs alongside EnemyHealth and CreatureLootTable.
-/// Handles the incapacitation visual state (disabling AI, playing downed animation)
-/// and spawning loot drops on death.
+/// Handles the downed visual state (disabling AI, playing downed animation),
+/// the unified harvest choice (extract DNA or harvest parts), and spawning
+/// loot drops on death.
 /// </summary>
 public class IncapacitationController : MonoBehaviour
 {
@@ -12,8 +13,8 @@ public class IncapacitationController : MonoBehaviour
     private CreatureLootTable lootTable;
     private IEnemy enemyAI;
 
-    [Header("Incapacitated State")]
-    [Tooltip("If true, the creature is visually collapsed/downed when incapacitated.")]
+    [Header("Downed State")]
+    [Tooltip("If true, the creature plays a downed animation when collapsed.")]
     [SerializeField] private bool useDownedAnimation = true;
     private Animator animator;
     private Rigidbody rb;
@@ -22,6 +23,13 @@ public class IncapacitationController : MonoBehaviour
     private bool hadRootMotion;
     private static readonly int DownedHash = Animator.StringToHash("DOWNED");
     private static readonly int RecoverHash = Animator.StringToHash("RECOVER");
+
+    [Header("Corpse Settings")]
+    [Tooltip("How long the dead body stays in the world before despawning.")]
+    [SerializeField] private float corpseDespawnTime = 60f;
+
+    // Tracks whether the kill came from the harvest menu (clean kill = full quality parts)
+    private bool cleanKill;
 
     private void Awake()
     {
@@ -84,8 +92,8 @@ public class IncapacitationController : MonoBehaviour
             animator.SetTrigger(DownedHash);
 
 #if UNITY_EDITOR
-        Debug.Log($"[IncapacitationController] {gameObject.name} is now incapacitated. " +
-                  $"Player can extract DNA for the next {lootTable?.vulnerableWindowDuration ?? 12f}s.");
+        Debug.Log($"[IncapacitationController] {gameObject.name} collapsed. " +
+                  $"Player can harvest for the next {lootTable?.vulnerableWindowDuration ?? 12f}s.");
 #endif
     }
 
@@ -108,23 +116,87 @@ public class IncapacitationController : MonoBehaviour
         // Play recovery animation
         if (useDownedAnimation && animator != null)
             animator.SetTrigger(RecoverHash);
-    }
 
-    [Header("Corpse Settings")]
-    [Tooltip("How long the dead body stays in the world before despawning.")]
-    [SerializeField] private float corpseDespawnTime = 60f;
+        // If DNA was extracted while downed, flee now that the creature woke up
+        if (enemyHealth != null && enemyHealth.HasBeenExtracted)
+            StartFlee();
+    }
 
     private void HandleDied()
     {
         if (lootTable == null) return;
 
-        // Roll for graft part drops
+        // Determine if parts should be degraded:
+        // - cleanKill = true (from harvest menu HARVEST PARTS) → full quality
+        // - hasBeenExtracted = true (extracted then chased down) → degraded
+        // - neither (creature hit while downed without menu) → degraded (messy kill)
+        bool isDegraded = !cleanKill || enemyHealth.HasBeenExtracted;
+
         var drops = lootTable.RollDrops();
 
-        // Convert creature into an interactable ragdoll corpse
         var corpse = gameObject.AddComponent<CreatureCorpse>();
         float healthNorm = enemyHealth != null ? enemyHealth.GetHealthNormalized() : 0f;
-        corpse.Initialize(drops, lootTable.dnaSample, healthNorm, corpseDespawnTime);
+        corpse.Initialize(drops, lootTable.dnaSample, healthNorm, corpseDespawnTime, isDegraded);
+
+        // Reset for safety
+        cleanKill = false;
+    }
+
+    // ---- Harvest Menu Entry Points ----
+
+    /// <summary>
+    /// Called by HarvestChoiceMenuUI when the player chooses HARVEST PARTS.
+    /// Kills the creature cleanly — full quality parts.
+    /// </summary>
+    public void HarvestKill()
+    {
+        cleanKill = true;
+        enemyHealth.ForceKill();
+    }
+
+    /// <summary>
+    /// Called by HarvestChoiceMenuUI when the player chooses EXTRACT DNA.
+    /// DNA goes to base storage via drone. Creature stays downed until the
+    /// recovery timer expires naturally, then gets up and flees.
+    /// </summary>
+    public void MercifulExtract()
+    {
+        enemyHealth.MarkExtracted();
+
+        // Add DNA to base storage immediately (drone is cosmetic)
+        if (lootTable.dnaSample != null && BaseStorage.Instance != null)
+            BaseStorage.Instance.AddSample(lootTable.dnaSample);
+
+        // Dispatch drone visual — use a temporary marker so the drone doesn't
+        // hide/destroy the creature itself (the creature stays downed)
+        var config = AnatomyManager.Instance != null ? AnatomyManager.Instance.DroneConfig : null;
+        if (config != null)
+        {
+            var marker = new GameObject("ExtractDroneMarker");
+            marker.transform.position = transform.position + Vector3.up * 0.5f;
+            DronePickup.Dispatch(marker, config);
+        }
+
+        // Creature stays downed — HandleRecovered() will trigger flee when
+        // the incap timer expires naturally in EnemyHealth.Update()
+
+#if UNITY_EDITOR
+        Debug.Log($"[IncapacitationController] {gameObject.name} extracted mercifully. DNA sent to base. Creature will flee when timer expires.");
+#endif
+    }
+
+    private void StartFlee()
+    {
+        var fleeable = aiComponent as IFleeable;
+        if (fleeable != null)
+        {
+            fleeable.StartFlee(10f);
+        }
+        else
+        {
+            // Fallback: destroy after delay if no flee behavior implemented
+            Destroy(gameObject, 10f);
+        }
     }
 
     private void SpawnPartDrop(GraftPartSO part)
@@ -141,7 +213,6 @@ public class IncapacitationController : MonoBehaviour
         Vector3 spawnPos = transform.position + lootTable.dropSpawnOffset;
         var dropObj = Instantiate(lootTable.partDropPickupPrefab, spawnPos, Quaternion.identity);
 
-        // Configure the pickup
         var pickup = dropObj.GetComponent<PartDropPickup>();
         if (pickup != null)
         {

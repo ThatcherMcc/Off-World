@@ -3,9 +3,10 @@ using UnityEngine;
 using OffWorld.Anatomy;
 
 /// <summary>
-/// Tool component on the player that handles DNA extraction from incapacitated creatures.
-/// The player must look at an incapacitated creature and hold the extract key to channel.
+/// DEPRECATED: Replaced by HarvestChoiceMenuUI which handles extraction via the unified menu.
+/// Remove this component from the Player prefab.
 /// </summary>
+[System.Obsolete("Replaced by HarvestChoiceMenuUI. Remove from Player prefab.")]
 public class DNAExtractor : MonoBehaviour
 {
     [Header("Extraction Settings")]
@@ -129,8 +130,7 @@ public class DNAExtractor : MonoBehaviour
             return;
         }
 
-        // Determine DNA quality based on precision of incapacitation
-        DNATier tier = targetLootTable.DetermineDNATier(targetEnemy.GetHealthNormalized());
+        DNATier tier = DNATier.Prime;
 
         // Mark creature as extracted
         targetEnemy.MarkExtracted();
@@ -140,33 +140,28 @@ public class DNAExtractor : MonoBehaviour
         if (energy == null) energy = GetComponentInParent<SuitEnergy>();
         energy?.OnIncapacitate();
 
-        // Create a copy of the DNA with the determined tier
+        // Add DNA sample to base storage via drone
         var dnaSample = targetLootTable.dnaSample;
 
+        // Add to storage immediately (drone is cosmetic)
+        if (BaseStorage.Instance != null)
+            BaseStorage.Instance.AddSample(dnaSample);
+
+        // Dispatch drone for visual
+        if (anatomyManager != null && anatomyManager.DroneConfig != null)
+            DronePickup.Dispatch(targetEnemy.gameObject, anatomyManager.DroneConfig);
+
+        // Show collection notification
+        if (HarvestFlashUI.Instance != null)
+            HarvestFlashUI.Instance.ShowFlash(
+                "DNA COLLECTED",
+                $"{tier} {dnaSample.sampleName} -- drone inbound",
+                HarvestUIStyles.TealPrimary, HarvestUIStyles.SeaGreen,
+                HarvestUIStyles.FlashAmberBG, 2.5f);
+
 #if UNITY_EDITOR
-        Debug.Log($"[DNAExtractor] Extracted {tier} {dnaSample.sampleName} from {targetEnemy.gameObject.name}!");
+        Debug.Log($"[DNAExtractor] Extracted {tier} {dnaSample.sampleName} -- sent to base storage.");
 #endif
-
-        // Find first empty active slot and load it, or notify player to manage slots
-        if (anatomyManager != null)
-        {
-            bool loaded = false;
-            for (int i = 0; i < anatomyManager.Suit.UnlockedActiveSlots; i++)
-            {
-                if (anatomyManager.Suit.GetActiveSlot(i) == null)
-                {
-                    anatomyManager.LoadActiveDNA(i, dnaSample);
-                    loaded = true;
-                    break;
-                }
-            }
-
-            if (!loaded)
-            {
-                // All slots full -- load into first slot (replace oldest)
-                anatomyManager.LoadActiveDNA(0, dnaSample);
-            }
-        }
 
         isExtracting = false;
         extractionProgress = 0f;

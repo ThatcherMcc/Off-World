@@ -9,10 +9,15 @@ namespace OffWorld.Anatomy
     /// </summary>
     public class AnatomyManager : MonoBehaviour
     {
+        public static AnatomyManager Instance { get; private set; }
+
         [Header("Sub-Systems")]
         [SerializeField] private GraftSystem graftSystem = new GraftSystem();
         [SerializeField] private DNASuit dnaSuit = new DNASuit();
         private SuitEnergy suitEnergy;
+
+        [Header("Drone Pickup")]
+        [SerializeField] private DronePickupConfig droneConfig;
 
         [Header("Base Stats (cached on Start)")]
         private float baseWalkSpeed;
@@ -34,9 +39,12 @@ namespace OffWorld.Anatomy
         public GraftSystem Grafts => graftSystem;
         public DNASuit Suit => dnaSuit;
         public SuitEnergy Energy => suitEnergy;
+        public DronePickupConfig DroneConfig => droneConfig;
 
         private void Awake()
         {
+            Instance = this;
+
             playerMovement = GetComponent<PlayerMovement>();
             playerHealth = GetComponent<PlayerHealth>();
             suitEnergy = GetComponent<SuitEnergy>();
@@ -143,10 +151,10 @@ namespace OffWorld.Anatomy
             return dnaSuit.SetActiveSlot(slotIndex, dna);
         }
 
-        /// <summary>Load DNA into a passive suit slot.</summary>
-        public DNASampleSO LoadPassiveDNA(int slotIndex, DNASampleSO dna)
+        /// <summary>Load DNA into an organ suit slot.</summary>
+        public DNASampleSO LoadOrganDNA(int slotIndex, DNASampleSO dna)
         {
-            return dnaSuit.SetPassiveSlot(slotIndex, dna);
+            return dnaSuit.SetOrganSlot(slotIndex, dna);
         }
 
         /// <summary>Get the current damage resistance (0-0.75) from all sources.</summary>

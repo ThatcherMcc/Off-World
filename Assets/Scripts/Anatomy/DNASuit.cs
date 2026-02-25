@@ -5,25 +5,31 @@ using UnityEngine;
 namespace OffWorld.Anatomy
 {
     /// <summary>
-    /// Manages the DNA suit system: active slots (abilities) and passive slots (stat bonuses).
+    /// Manages the DNA suit system: active slots (abilities) and organ slots (passive stat bonuses).
     /// DNA can be freely swapped unlike permanent grafts.
     /// </summary>
     [Serializable]
     public class DNASuit
     {
-        [Header("Active Slots (keys 1-4)")]
+        [Header("Active Slots (scroll wheel)")]
         [SerializeField] private DNASampleSO[] activeSlots = new DNASampleSO[4];
 
-        [Header("Passive Slots")]
-        [SerializeField] private DNASampleSO[] passiveSlots = new DNASampleSO[2];
+        [Header("Organ Slots")]
+        [SerializeField] private DNASampleSO[] organSlots = new DNASampleSO[2];
 
         [Header("Slot Unlocking")]
         [SerializeField] private int unlockedActiveSlots = 2;  // Start with 2, unlock more via progression
-        [SerializeField] private int unlockedPassiveSlots = 1; // Start with 1
+        [SerializeField] private int unlockedOrganSlots = 1;   // Start with 1
+
+        [Header("Active Slot Selection")]
+        [SerializeField] private int currentActiveIndex;
 
         public event Action OnDNAChanged;
 
         // --- Active Slots ---
+
+        public int CurrentActiveIndex => currentActiveIndex;
+        public DNASampleSO CurrentActiveDNA => GetActiveSlot(currentActiveIndex);
 
         public DNASampleSO GetActiveSlot(int index)
         {
@@ -47,20 +53,34 @@ namespace OffWorld.Anatomy
             return SetActiveSlot(index, null);
         }
 
-        // --- Passive Slots ---
-
-        public DNASampleSO GetPassiveSlot(int index)
+        /// <summary>Cycle through unlocked active slots via scroll wheel.</summary>
+        public void CycleActiveSlot(int direction)
         {
-            if (index < 0 || index >= passiveSlots.Length) return null;
-            return passiveSlots[index];
+            if (unlockedActiveSlots <= 0) return;
+
+            currentActiveIndex += direction;
+            if (currentActiveIndex >= unlockedActiveSlots)
+                currentActiveIndex = 0;
+            if (currentActiveIndex < 0)
+                currentActiveIndex = unlockedActiveSlots - 1;
+
+            OnDNAChanged?.Invoke();
         }
 
-        /// <summary>Load DNA into a passive slot. Returns the previous DNA.</summary>
-        public DNASampleSO SetPassiveSlot(int index, DNASampleSO dna)
+        // --- Organ Slots ---
+
+        public DNASampleSO GetOrganSlot(int index)
         {
-            if (index < 0 || index >= unlockedPassiveSlots) return null;
-            var previous = passiveSlots[index];
-            passiveSlots[index] = dna;
+            if (index < 0 || index >= organSlots.Length) return null;
+            return organSlots[index];
+        }
+
+        /// <summary>Load DNA into an organ slot. Returns the previous DNA.</summary>
+        public DNASampleSO SetOrganSlot(int index, DNASampleSO dna)
+        {
+            if (index < 0 || index >= unlockedOrganSlots) return null;
+            var previous = organSlots[index];
+            organSlots[index] = dna;
             OnDNAChanged?.Invoke();
             return previous;
         }
@@ -73,7 +93,7 @@ namespace OffWorld.Anatomy
         [SerializeField] private float suitEfficiency = 0.5f;
 
         /// <summary>
-        /// Compute combined passive stat modifiers from ALL loaded DNA (active + passive slots).
+        /// Compute combined passive stat modifiers from ALL loaded DNA (active + organ slots).
         /// DNA buffs are always active but weaker than grafts due to suit efficiency scaling.
         /// </summary>
         public StatModifierData GetPassiveModifiers()
@@ -89,12 +109,12 @@ namespace OffWorld.Anatomy
                 }
             }
 
-            // Gather from all passive slots
-            for (int i = 0; i < unlockedPassiveSlots && i < passiveSlots.Length; i++)
+            // Gather from all organ slots
+            for (int i = 0; i < unlockedOrganSlots && i < organSlots.Length; i++)
             {
-                if (passiveSlots[i] != null)
+                if (organSlots[i] != null)
                 {
-                    combined = StatModifierData.Combine(combined, passiveSlots[i].GetEffectivePassiveModifiers());
+                    combined = StatModifierData.Combine(combined, organSlots[i].GetEffectivePassiveModifiers());
                 }
             }
 
@@ -126,16 +146,16 @@ namespace OffWorld.Anatomy
 
         // --- Queries ---
 
-        /// <summary>True if any slot (active or passive) has DNA loaded.</summary>
+        /// <summary>True if any slot (active or organ) has DNA loaded.</summary>
         public bool HasAnyDNA()
         {
-            return activeSlots.Any(s => s != null) || passiveSlots.Any(s => s != null);
+            return activeSlots.Any(s => s != null) || organSlots.Any(s => s != null);
         }
 
         /// <summary>Count of unique species across all loaded DNA.</summary>
         public int UniqueSpeciesCount()
         {
-            return activeSlots.Concat(passiveSlots)
+            return activeSlots.Concat(organSlots)
                 .Where(s => s != null)
                 .Select(s => s.species)
                 .Distinct()
@@ -145,7 +165,7 @@ namespace OffWorld.Anatomy
         // --- Slot Unlocking ---
 
         public int UnlockedActiveSlots => unlockedActiveSlots;
-        public int UnlockedPassiveSlots => unlockedPassiveSlots;
+        public int UnlockedOrganSlots => unlockedOrganSlots;
 
         public void UnlockActiveSlot()
         {
@@ -153,10 +173,10 @@ namespace OffWorld.Anatomy
                 unlockedActiveSlots++;
         }
 
-        public void UnlockPassiveSlot()
+        public void UnlockOrganSlot()
         {
-            if (unlockedPassiveSlots < passiveSlots.Length)
-                unlockedPassiveSlots++;
+            if (unlockedOrganSlots < organSlots.Length)
+                unlockedOrganSlots++;
         }
     }
 }

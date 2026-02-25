@@ -23,7 +23,7 @@ namespace OffWorld.Anatomy
     public enum BodySlot
     {
         Head,
-        Torso,
+        Body,
         LeftArm,
         RightArm,
         Legs,

@@ -2,10 +2,10 @@ using UnityEngine;
 
 /// <summary>
 /// Renders context-aware interact prompts when the player looks at:
-/// - A creature corpse: amber "[E] HARVEST REMAINS" with part count
+/// - A creature corpse: amber "[E] COLLECT REMAINS" with part count
 /// - An incapacitated creature: teal "[E] EXTRACT DNA" with recovery timer
 ///
-/// Reads from InteractController.LookedAtCorpse / LookedAtIncapCreature.
+/// Reads from InteractController.LookedAtCorpse / LookedAtDownedCreature.
 /// Add to the Player GameObject alongside InteractController.
 /// </summary>
 public class HarvestPromptUI : MonoBehaviour
@@ -16,6 +16,7 @@ public class HarvestPromptUI : MonoBehaviour
     private bool stylesReady;
     private GUIStyle corpseTitle, corpseSubtitle, corpseDecompose;
     private GUIStyle incapTitle, incapSubtitle, incapTimer;
+    private GUIStyle stationTitle, stationSubtitle;
 
     private void Start()
     {
@@ -36,6 +37,9 @@ public class HarvestPromptUI : MonoBehaviour
         incapSubtitle = HarvestUIStyles.MakeLabel(15, HarvestUIStyles.SeaGreen, FontStyle.Normal, TextAnchor.MiddleCenter);
         incapTimer = HarvestUIStyles.MakeLabel(13, HarvestUIStyles.TealPrimary, FontStyle.Bold, TextAnchor.MiddleCenter);
 
+        stationTitle = HarvestUIStyles.MakeLabel(20, HarvestUIStyles.TealPrimary, FontStyle.Bold, TextAnchor.MiddleCenter);
+        stationSubtitle = HarvestUIStyles.MakeLabel(15, HarvestUIStyles.SeaGreen, FontStyle.Normal, TextAnchor.MiddleCenter);
+
         stylesReady = true;
     }
 
@@ -45,13 +49,19 @@ public class HarvestPromptUI : MonoBehaviour
 
         // Don't show prompts when a menu is open
         if ((GraftMenuUI.Instance != null && GraftMenuUI.Instance.IsShowing) ||
-            (ExtractMenuUI.Instance != null && ExtractMenuUI.Instance.IsShowing))
+            (ExtractMenuUI.Instance != null && ExtractMenuUI.Instance.IsShowing) ||
+            (HarvestChoiceMenuUI.Instance != null && HarvestChoiceMenuUI.Instance.IsShowing) ||
+            (SurgeryTableUI.Instance != null && SurgeryTableUI.Instance.IsShowing) ||
+            (ExtractionChamberUI.Instance != null && ExtractionChamberUI.Instance.IsShowing) ||
+            (StorageTerminalUI.Instance != null && StorageTerminalUI.Instance.IsShowing))
             return;
 
         if (interactController.LookedAtCorpse != null)
             DrawCorpsePrompt(interactController.LookedAtCorpse);
-        else if (interactController.LookedAtIncapCreature != null)
-            DrawIncapPrompt(interactController.LookedAtIncapCreature);
+        else if (interactController.LookedAtDownedCreature != null)
+            DrawIncapPrompt(interactController.LookedAtDownedCreature);
+        else if (interactController.LookedAtBaseStation != null)
+            DrawBaseStationPrompt(interactController.LookedAtBaseStation);
     }
 
     private void DrawCorpsePrompt(CreatureCorpse corpse)
@@ -69,13 +79,13 @@ public class HarvestPromptUI : MonoBehaviour
         GUI.DrawTexture(bg, Texture2D.whiteTexture);
         GUI.color = prevColor;
 
-        // Title: [E] HARVEST REMAINS
-        GUI.Label(new Rect(x, y + 8, w, 26), "[E] HARVEST REMAINS", corpseTitle);
+        // Title: [E] COLLECT REMAINS
+        GUI.Label(new Rect(x, y + 8, w, 26), "[E] COLLECT REMAINS", corpseTitle);
 
-        // Subtitle: CreatureName -- N parts available
+        // Subtitle: CreatureName -- N parts, drone transport
         int count = corpse.DropCount;
         string parts = count == 1 ? "part" : "parts";
-        GUI.Label(new Rect(x, y + 34, w, 22), $"{corpse.CreatureName}  --  {count} {parts} available", corpseSubtitle);
+        GUI.Label(new Rect(x, y + 34, w, 22), $"{corpse.CreatureName}  --  {count} {parts}  |  drone to base", corpseSubtitle);
 
         // Decomposing countdown (final 15 seconds)
         float timeLeft = corpse.DespawnTimeRemaining;
@@ -117,12 +127,12 @@ public class HarvestPromptUI : MonoBehaviour
         GUI.DrawTexture(bg, Texture2D.whiteTexture);
         GUI.color = prevColor;
 
-        // Title: [E] EXTRACT DNA
-        GUI.Label(new Rect(x, y + 6, w, 26), "[E] EXTRACT DNA", incapTitle);
+        // Title: [E] HARVEST
+        GUI.Label(new Rect(x, y + 6, w, 26), "[E] HARVEST", incapTitle);
 
         // Subtitle
         string creatureName = enemy.gameObject.name.Replace("(Clone)", "").Trim();
-        GUI.Label(new Rect(x, y + 30, w, 22), $"{creatureName}  --  specimen alive", incapSubtitle);
+        GUI.Label(new Rect(x, y + 30, w, 22), $"{creatureName}  --  specimen downed", incapSubtitle);
 
         // Timer bar
         float totalDuration = 12f; // Default, could read from CreatureLootTable
@@ -156,5 +166,40 @@ public class HarvestPromptUI : MonoBehaviour
         // Timer text
         incapTimer.normal.textColor = timerBarColor;
         GUI.Label(new Rect(x, barY + 12, w, 18), timerLabel, incapTimer);
+    }
+
+    private void DrawBaseStationPrompt(MonoBehaviour station)
+    {
+        InitStyles();
+
+        string title, subtitle;
+        if (station is ExtractionChamber)
+        {
+            title = "[E] EXTRACTION CHAMBER";
+            subtitle = "Load DNA samples into suit";
+        }
+        else if (station is StorageTerminal)
+        {
+            title = "[E] STORAGE";
+            subtitle = "Browse stored parts and samples";
+        }
+        else
+        {
+            title = "[E] SURGERY TABLE";
+            subtitle = "Equip graft parts";
+        }
+
+        float w = 300, h = 70;
+        float x = (Screen.width - w) / 2f;
+        float y = Screen.height / 2f + 60f;
+        Rect bg = new Rect(x, y, w, h);
+
+        var prevColor = GUI.color;
+        GUI.color = HarvestUIStyles.IncapPromptBG;
+        GUI.DrawTexture(bg, Texture2D.whiteTexture);
+        GUI.color = prevColor;
+
+        GUI.Label(new Rect(x, y + 10, w, 26), title, stationTitle);
+        GUI.Label(new Rect(x, y + 36, w, 22), subtitle, stationSubtitle);
     }
 }

@@ -522,4 +522,75 @@ namespace BossFight.Strategies
             restTimer = UnityEngine.Random.Range(restMin, restMax);
         }
     }
+
+    /// <summary>
+    /// Rigidbody-based flee from player. Runs in the opposite direction
+    /// for a set duration, then returns Success.
+    /// Used after merciful DNA extraction — creature runs away.
+    /// </summary>
+    public class FleeFromPlayerStrategy : IStrategy
+    {
+        readonly Rigidbody rb;
+        readonly Transform target;
+        readonly float moveSpeed;
+        readonly float smoothing;
+        readonly float duration;
+
+        private float timer;
+        private bool started;
+
+        public FleeFromPlayerStrategy(Rigidbody rb, Transform target,
+            float moveSpeed, float smoothing = 5f, float duration = 10f)
+        {
+            this.rb = rb;
+            this.target = target;
+            this.moveSpeed = moveSpeed;
+            this.smoothing = smoothing;
+            this.duration = duration;
+        }
+
+        public Node.Status Process()
+        {
+            if (rb == null || target == null) return Node.Status.Failure;
+
+            if (!started)
+            {
+                timer = duration;
+                started = true;
+            }
+
+            // Run away from player
+            Vector3 fleeDir = (rb.position - target.position).normalized;
+            fleeDir.y = 0f;
+            if (fleeDir.sqrMagnitude < 0.01f)
+                fleeDir = rb.transform.forward;
+            fleeDir.Normalize();
+
+            Vector3 targetVelocity = fleeDir * moveSpeed;
+            Vector3 currentHorizontal = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+            Vector3 newVelocity = Vector3.Lerp(currentHorizontal, targetVelocity, smoothing * Time.deltaTime);
+            rb.velocity = new Vector3(newVelocity.x, rb.velocity.y, newVelocity.z);
+
+            if (fleeDir.sqrMagnitude > 0.01f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(fleeDir);
+                rb.rotation = Quaternion.Slerp(rb.rotation, targetRotation, smoothing * Time.deltaTime);
+            }
+
+            timer -= Time.deltaTime;
+            if (timer <= 0f)
+            {
+                started = false;
+                return Node.Status.Success;
+            }
+
+            return Node.Status.Running;
+        }
+
+        public void Reset()
+        {
+            started = false;
+            timer = 0f;
+        }
+    }
 }
